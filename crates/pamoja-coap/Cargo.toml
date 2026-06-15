@@ -1,0 +1,20 @@
+[package]
+name = "pamoja-coap"
+description = "CoAP transport for the pamoja device SDK, built on coap-lite over UDP."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+pamoja-core = { workspace = true }
+coap-lite = "0.13"
+tokio = { version = "1", features = ["rt", "sync", "macros", "time", "net"] }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "net"] }
