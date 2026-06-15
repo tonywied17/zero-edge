@@ -48,7 +48,7 @@ What that means in practice:
 
 ## Status
 
-Early Development and Planning. The foundation and the first capability work end to end:
+In active development, the following crates and bindings are available:
 
 - `pamoja-core` - the device model and transport, store, event-bus, and error traits.
 - `pamoja-codec` - the pluggable serialization trait with serde-based CBOR, JSON, and raw-bytes codecs behind feature flags.
