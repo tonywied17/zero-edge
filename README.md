@@ -53,6 +53,7 @@ In active development, the following crates and bindings are available:
 - `pamoja-core` - the device model and transport, store, event-bus, and error traits.
 - `pamoja-codec` - the pluggable serialization trait with serde-based CBOR, JSON, and raw-bytes codecs behind feature flags.
 - `pamoja-mqtt` - an MQTT client implementing the core `Transport` trait, tested against an embedded broker.
+- `pamoja-coap` - a CoAP client implementing the core `Transport` trait over UDP, with confirmable and non-confirmable delivery and RFC 7641 observe, tested against an in-process server.
 - `pamoja-sync` - offline-first store-and-forward queues implementing the core `Store` trait: an in-memory queue and a crash-safe on-disk queue that survives power loss.
 - `pamoja-loopback` - an in-process `Transport` with MQTT-style topic matching, plus a fault-injecting decorator, so examples and tests exercise the full publish/subscribe path and degraded-link behavior with no broker and no hardware.
 - `pamoja-bus` - an in-memory typed publish/subscribe event bus implementing the core `EventBus` trait, broadcasting each event to every subscriber.
@@ -150,7 +151,7 @@ Every domain capability is a separate crate behind a trait defined in the core. 
 
 ## Roadmap
 
-Messaging and radio. MQTT works today. Next: CoAP, LoRa and LoRaWAN, cheap local mesh (ESP-NOW, nRF24), a Meshtastic bridge for off-grid networks, and cellular uplink, unified by a cost-aware transport ladder that uses the cheapest link available and buffers when there is none.
+Messaging and radio. MQTT and CoAP work today. Next: LoRa and LoRaWAN, cheap local mesh (ESP-NOW, nRF24), a Meshtastic bridge for off-grid networks, and cellular uplink, unified by a cost-aware transport ladder that uses the cheapest link available and buffers when there is none.
 
 Hardware and sensors. Serial, CAN, GPIO/I2C/SPI, and RS485/Modbus for long field cabling. A catalog of drivers for cheap, common, salvageable parts, plus device profiles you instantiate by name (a vaccine-fridge monitor, an irrigation node, a well-level sensor) instead of wiring pins.
 

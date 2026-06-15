@@ -4,6 +4,7 @@ members = [
     "crates/pamoja-core",
     "crates/pamoja-codec",
     "crates/pamoja-mqtt",
+    "crates/pamoja-coap",
     "crates/pamoja-ffi",
     "crates/pamoja-sync",
     "crates/pamoja-loopback",
