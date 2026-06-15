@@ -1,0 +1,125 @@
+//! Warning before a falling level runs out.
+
+/// Predicts how soon a falling level will reach a threshold.
+///
+/// This is the primitive behind "warn before a tank runs dry". Feed it successive
+/// level readings and it estimates how many more samples remain before the level
+/// reaches a low mark, so an alert can fire with time to act on it. The technique
+/// one layer down is a linear extrapolation of the most recent rate of fall, so it
+/// reacts to noise and pairs well with a [`Smoother`](crate::Smoother) on the input.
+///
+/// # Examples
+///
+/// ```
+/// use pamoja_kit::Depletion;
+///
+/// let mut tank = Depletion::new(0.0);
+/// assert_eq!(tank.update(10.0), None); // first reading: no rate is known yet
+/// assert_eq!(tank.update(8.0), Some(4)); // falling 2 per sample, 4 until empty
+/// ```
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Depletion {
+    threshold: f32,
+    last: Option<f32>,
+}
+
+impl Depletion {
+    /// Creates a predictor that warns as the level approaches `threshold`.
+    ///
+    /// # Arguments
+    ///
+    /// * `threshold` - the low level to predict reaching, such as an empty tank.
+    ///
+    /// # Returns
+    ///
+    /// A predictor awaiting its first two readings.
+    pub fn new(threshold: f32) -> Self {
+        Self {
+            threshold,
+            last: None,
+        }
+    }
+
+    /// Records a reading and estimates the samples until the threshold is reached.
+    ///
+    /// # Arguments
+    ///
+    /// * `level` - the latest measured level.
+    ///
+    /// # Returns
+    ///
+    /// `Some(0)` if the level is already at or below the threshold; `Some(n)` for
+    /// the estimated number of samples until it is reached at the current rate of
+    /// fall; or `None` if the level is steady or rising, or if this is the first
+    /// reading and no rate is known yet.
+    pub fn update(&mut self, level: f32) -> Option<u32> {
+        let estimate = if level <= self.threshold {
+            Some(0)
+        } else {
+            match self.last {
+                Some(previous) => {
+                    let rate = previous - level;
+                    if rate > 0.0 {
+                        Some(ceil_samples((level - self.threshold) / rate))
+                    } else {
+                        None
+                    }
+                }
+                None => None,
+            }
+        };
+        self.last = Some(level);
+        estimate
+    }
+}
+
+// Rounds a positive sample count up; `f32::ceil` lives in `std`.
+fn ceil_samples(value: f32) -> u32 {
+    let whole = value as u32;
+    if (whole as f32) < value {
+        whole + 1
+    } else {
+        whole
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_first_reading_has_no_rate() {
+        let mut tank = Depletion::new(0.0);
+        assert_eq!(tank.update(10.0), None);
+    }
+
+    #[test]
+    fn counts_down_as_the_level_falls() {
+        let mut tank = Depletion::new(2.0);
+        tank.update(10.0);
+        assert_eq!(tank.update(8.0), Some(3)); // (8 - 2) / 2 = 3
+        assert_eq!(tank.update(6.0), Some(2)); // (6 - 2) / 2 = 2
+    }
+
+    #[test]
+    fn rounds_partial_samples_up() {
+        let mut tank = Depletion::new(0.0);
+        tank.update(10.0);
+        assert_eq!(tank.update(7.0), Some(3)); // (7 - 0) / 3 = 2.33, rounded up
+    }
+
+    #[test]
+    fn a_steady_or_rising_level_does_not_warn() {
+        let mut tank = Depletion::new(2.0);
+        tank.update(6.0);
+        assert_eq!(tank.update(6.0), None); // steady
+        assert_eq!(tank.update(7.0), None); // rising
+    }
+
+    #[test]
+    fn at_or_below_the_threshold_is_zero() {
+        let mut tank = Depletion::new(2.0);
+        assert_eq!(tank.update(2.0), Some(0));
+        assert_eq!(tank.update(1.0), Some(0));
+    }
+}

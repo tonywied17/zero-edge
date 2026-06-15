@@ -56,3 +56,6 @@ jobs:
 
       - name: Publish pamoja-ladder
         run: cargo publish -p pamoja-ladder
+
+      - name: Publish pamoja-kit
+        run: cargo publish -p pamoja-kit
