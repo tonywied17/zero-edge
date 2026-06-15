@@ -8,7 +8,7 @@ members = [
 ]
 # Language bindings are standalone crates with their own toolchains and lint
 # policy; they are built by their own pipelines, not the core workspace.
-exclude = ["bindings/node"]
+exclude = ["bindings/node", "bindings/python"]
 
 [workspace.package]
 version = "0.1.0"
