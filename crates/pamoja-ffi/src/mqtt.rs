@@ -40,6 +40,9 @@ fn runtime() -> &'static Runtime {
 }
 
 /// MQTT delivery guarantee, mirroring the protocol's quality-of-service levels.
+// The shared `Once` suffix is the protocol's own vocabulary; renaming would
+// distort the C ABI, so the variant-name lint is allowed here.
+#[allow(clippy::enum_variant_names)]
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub enum PamojaQos {
