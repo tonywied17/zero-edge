@@ -1,0 +1,104 @@
+name: release-nuget
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  native:
+    name: native ${{ matrix.rid }}
+    runs-on: ${{ matrix.host }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - host: windows-latest
+            target: x86_64-pc-windows-msvc
+            rid: win-x64
+            lib: pamoja_ffi.dll
+          - host: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            rid: linux-x64
+            lib: libpamoja_ffi.so
+          # Native ARM64 runner: ring's ARM assembly does not cross-compile in the
+          # GCC manylinux image, so build this one natively.
+          - host: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+            rid: linux-arm64
+            lib: libpamoja_ffi.so
+          # Cross-compiled on Apple Silicon: scarce macos-13 Intel runners stall
+          # the release.
+          - host: macos-latest
+            target: x86_64-apple-darwin
+            rid: osx-x64
+            lib: libpamoja_ffi.dylib
+          - host: macos-latest
+            target: aarch64-apple-darwin
+            rid: osx-arm64
+            lib: libpamoja_ffi.dylib
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Build the native library
+        run: cargo build -p pamoja-ffi --release --target ${{ matrix.target }}
+
+      - name: Stage the native library under its runtime identifier
+        shell: bash
+        run: |
+          mkdir -p staging/${{ matrix.rid }}/native
+          cp target/${{ matrix.target }}/release/${{ matrix.lib }} staging/${{ matrix.rid }}/native/
+
+      - name: Upload native artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-${{ matrix.rid }}
+          path: staging/${{ matrix.rid }}/native/${{ matrix.lib }}
+          if-no-files-found: error
+
+  publish:
+    name: pack and publish to NuGet
+    needs: native
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Download native artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: native-*
+          path: natives
+
+      - name: Assemble runtimes for packing
+        shell: bash
+        run: |
+          dest=bindings/dotnet/src/Pamoja.Core/runtimes
+          for rid in win-x64 linux-x64 linux-arm64 osx-x64 osx-arm64; do
+            mkdir -p "$dest/$rid/native"
+            cp natives/native-$rid/* "$dest/$rid/native/"
+          done
+          find "$dest" -type f
+
+      - name: Pack
+        run: dotnet pack bindings/dotnet/src/Pamoja.Core/Pamoja.Core.csproj -c Release -o dist
+
+      - name: Publish to NuGet
+        run: >
+          dotnet nuget push "dist/*.nupkg"
+          --api-key "${{ secrets.NUGET_TOKEN }}"
+          --source https://api.nuget.org/v3/index.json
+          --skip-duplicate

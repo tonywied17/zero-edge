@@ -4,6 +4,7 @@ members = [
     "crates/pamoja-core",
     "crates/pamoja-codec",
     "crates/pamoja-mqtt",
+    "crates/pamoja-ffi",
     "crates/xtask",
 ]
 # Language bindings are standalone crates with their own toolchains and lint
@@ -22,6 +23,7 @@ authors = ["tonywied17"]
 # published to crates.io, and is kept in lockstep with workspace.package.version.
 [workspace.dependencies]
 pamoja-core = { path = "crates/pamoja-core", version = "0.1.5" }
+pamoja-mqtt = { path = "crates/pamoja-mqtt", version = "0.1.5" }
 
 [workspace.lints.rust]
 missing_docs = "deny"

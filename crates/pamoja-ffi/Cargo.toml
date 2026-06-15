@@ -1,0 +1,32 @@
+[package]
+name = "pamoja-ffi"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Curated C ABI surface over the pamoja device SDK, for C, C++, and .NET."
+
+[lib]
+# cdylib is loaded by .NET (P/Invoke) and any dynamically linked C/C++ host;
+# staticlib serves C/C++ projects that link statically; lib lets the build script
+# and tests use the crate normally.
+crate-type = ["lib", "cdylib", "staticlib"]
+
+[features]
+default = ["mqtt"]
+# The MQTT transport capability. Kept behind a feature so the C ABI can later be
+# split per capability without reshaping the code.
+mqtt = ["dep:pamoja-mqtt", "dep:tokio"]
+
+[dependencies]
+pamoja-core.workspace = true
+pamoja-mqtt = { workspace = true, optional = true }
+tokio = { version = "1", default-features = false, features = ["rt-multi-thread"], optional = true }
+
+[build-dependencies]
+cbindgen = { version = "0.27", default-features = false }
+
+[lints]
+workspace = true

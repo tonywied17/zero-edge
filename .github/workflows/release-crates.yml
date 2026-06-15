@@ -41,3 +41,6 @@ jobs:
 
       - name: Publish pamoja-mqtt
         run: cargo publish -p pamoja-mqtt
+
+      - name: Publish pamoja-ffi
+        run: cargo publish -p pamoja-ffi
