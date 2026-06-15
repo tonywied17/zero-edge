@@ -58,6 +58,7 @@ In active development, the following crates and bindings are available:
 - `pamoja-loopback` - an in-process `Transport` with MQTT-style topic matching, plus a fault-injecting decorator, so examples and tests exercise the full publish/subscribe path and degraded-link behavior with no broker and no hardware.
 - `pamoja-ladder` - a cost-aware transport ladder: rank transports cheapest-first, send over the first reachable rung, and buffer to a `Store` when every link is down, draining the backlog in order once one returns.
 - `pamoja-bus` - an in-memory typed publish/subscribe event bus implementing the core `EventBus` trait, broadcasting each event to every subscriber.
+- `pamoja-kit` - a `no_std`, allocation-free helper layer that names the math for the goal, not the technique: smooth a noisy reading, turn a raw reading into real units, keep a temperature, and warn before a tank runs dry, each documenting the real algorithm one layer down.
 - `pamoja-ffi` - the curated C ABI over the core and MQTT, with a `cbindgen`-generated, drift-checked `pamoja.h`. This is the single auditable unsafe boundary and the seam C, C++, and .NET consume.
 - `@pamoja/core` - the Node binding, shipped in two tiers: a generated contract and a hand-written TypeScript facade (the `MqttClient` today, until the capability-scoped packages land).
 - `pamoja-core` (Python) - the Python binding, same two tiers: a generated, type-stubbed contract and a hand-written async facade, built with PyO3 and maturin.
@@ -164,7 +165,7 @@ Robotics and drones. A ROS2 and Zenoh bridge, then MAVLink for drones, modeled a
 
 Security. TLS 1.3 and DTLS, X.509 device identity, and signed OTA updates with verified rollback.
 
-Reach. Bindings beyond Node: Python, C#/.NET, Lua, WebAssembly, Kotlin, Swift, and Go. A plain-language helper layer that names things for the goal, not the math (keep a temperature, smooth a noisy reading, warn before a tank runs dry), with the real algorithm one layer down so it teaches as it abstracts. And an offline-first community cookbook so the SDK reaches the people it is built for.
+Reach. Bindings beyond Node: Python, C#/.NET, Lua, WebAssembly, Kotlin, Swift, and Go. The plain-language helper layer (`pamoja-kit`) has its first slice today - keep a temperature, smooth a noisy reading, warn before a tank runs dry - each naming the goal over the math with the real algorithm one layer down; more helpers (calibration curves, geo, control) follow. And an offline-first community cookbook so the SDK reaches the people it is built for.
 
 ## Languages
 
