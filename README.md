@@ -50,12 +50,14 @@ What that means in practice:
 Early Development and Planning. The foundation and the first capability work end to end:
 
 - `pamoja-core` - the device model and transport, store, event-bus, and error traits.
-- `pamoja-codec` - the pluggable serialization trait.
+- `pamoja-codec` - the pluggable serialization trait with serde-based CBOR, JSON, and raw-bytes codecs behind feature flags.
 - `pamoja-mqtt` - an MQTT client implementing the core `Transport` trait, tested against an embedded broker.
+- `pamoja-ffi` - the curated C ABI over the core and MQTT, with a `cbindgen`-generated, drift-checked `pamoja.h`. This is the single auditable unsafe boundary and the seam C, C++, and .NET consume.
 - `@pamoja/core` - the Node binding, shipped in two tiers: a generated contract and a hand-written TypeScript facade.
 - `pamoja-core` (Python) - the Python binding, same two tiers: a generated, type-stubbed contract and a hand-written async facade, built with PyO3 and maturin.
+- `Pamoja.Core` (.NET) - the C#/.NET binding over the C ABI, same two tiers: a P/Invoke interop layer and a hand-written async facade with `IAsyncEnumerable` message streams and `IAsyncDisposable` lifecycle.
 
-CI runs formatting, clippy, and tests for the workspace, builds the Node and Python bindings, and fails if either generated surface drifts from the Rust source. Release workflows publish to crates.io, npm, and PyPI on a version tag. Everything past this is on the roadmap below.
+CI runs formatting, clippy, and tests for the workspace, builds the Node, Python, and .NET bindings, and fails if any generated surface (the binding contracts and the C header) drifts from the Rust source. Release workflows publish to crates.io, npm, PyPI, and NuGet on a version tag. Everything past this is on the roadmap below.
 
 ## A quick look
 
@@ -88,6 +90,27 @@ async def main():
             print(message.topic, message.payload.decode())
 
 asyncio.run(main())
+```
+
+The same shape in C#, through its async facade:
+
+```csharp
+using Pamoja.Core;
+
+await using var client = new MqttClient(new MqttClientOptions
+{
+    ClientId = "sensor-1",
+    Host = "localhost",
+    Port = 1883,
+});
+await client.ConnectAsync();
+await client.SubscribeAsync("sensors/+/temperature");
+await client.PublishAsync("sensors/1/temperature", "21.5");
+
+await foreach (var message in client)
+{
+    Console.WriteLine($"{message.Topic}: {message.Payload.Length} bytes");
+}
 ```
 
 The same thing in Rust:
@@ -142,7 +165,7 @@ Reach. Bindings beyond Node: Python, C#/.NET, Lua, WebAssembly, Kotlin, Swift, a
 | Rust | `pamoja-core`, `pamoja-mqtt`, ... | available |
 | TypeScript / Node | `@pamoja/core` | in progress |
 | Python | `pamoja-core` | in progress |
-| C# / .NET | `Pamoja.*` | planned |
+| C# / .NET | `Pamoja.Core` | in progress |
 | Lua | embeddable | planned |
 | WebAssembly | browser / npm | planned |
 | Kotlin, Swift, Go | platform-native | planned |
@@ -150,8 +173,8 @@ Reach. Bindings beyond Node: Python, C#/.NET, Lua, WebAssembly, Kotlin, Swift, a
 ## Repository layout
 
 ```
-crates/      Rust engine and capability crates
-bindings/    per-language bindings (Node today; more to come)
+crates/      Rust engine and capability crates (including pamoja-ffi, the C ABI)
+bindings/    per-language bindings (Node, Python, .NET today; more to come)
 assets/      brand and logo
 ```
 
@@ -171,6 +194,11 @@ cd ../python
 python -m venv .venv && . .venv/bin/activate
 pip install maturin pytest && maturin develop  # build the extension and install the facade
 pytest                                          # smoke-test the binding
+
+cd ../..
+cargo build -p pamoja-ffi --release                       # build the native C ABI and refresh pamoja.h
+dotnet build bindings/dotnet/Pamoja.Core.sln -c Release    # build the .NET interop and facade
+dotnet run --project bindings/dotnet/tests/Pamoja.Core.Smoke -c Release  # smoke-test the binding
 ```
 
 The local toolchain needs no extra components; formatting and clippy run in CI.

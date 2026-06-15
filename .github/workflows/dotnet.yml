@@ -1,0 +1,45 @@
+name: dotnet
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: build and smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-ffi-${{ hashFiles('**/Cargo.toml') }}
+
+      - name: Build the native FFI library and regenerate the C header
+        run: cargo build -p pamoja-ffi --release
+
+      - name: Check the generated header is in sync with the Rust source
+        run: |
+          if ! git diff --exit-code -- crates/pamoja-ffi/include/pamoja.h; then
+            echo "::error::Generated header is stale. Run 'cargo build -p pamoja-ffi' and commit crates/pamoja-ffi/include/pamoja.h."
+            exit 1
+          fi
+
+      - name: Build the .NET binding
+        run: dotnet build bindings/dotnet/Pamoja.Core.sln -c Release
+
+      - name: Smoke test
+        run: dotnet run --project bindings/dotnet/tests/Pamoja.Core.Smoke -c Release
