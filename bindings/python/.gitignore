@@ -1,0 +1,13 @@
+# Native extensions are built per platform, not committed.
+*.so
+*.pyd
+*.dylib
+
+# Build and packaging output.
+dist/
+wheels/
+target/
+
+# Local virtual environments.
+.venv/
+venv/
