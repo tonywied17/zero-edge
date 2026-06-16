@@ -16,6 +16,7 @@
 //! - [`Thermostat`] - keep a reading near a setpoint (on/off control with
 //!   hysteresis).
 //! - [`Depletion`] - warn before a falling level runs out (linear extrapolation).
+//! - [`Surge`] - warn when a reading changes dangerously fast (first difference).
 //! - [`Geofence`] - warn when a tracked point leaves a safe area (great-circle
 //!   distance). Behind the default `geo` feature, which pulls in `libm` for the
 //!   trigonometry; disable it to keep the crate dependency-free.
@@ -41,6 +42,7 @@
 mod calibration;
 mod depletion;
 mod smoothing;
+mod surge;
 mod thermostat;
 
 #[cfg(feature = "geo")]
@@ -49,6 +51,7 @@ mod geo;
 pub use calibration::Calibration;
 pub use depletion::Depletion;
 pub use smoothing::Smoother;
+pub use surge::Surge;
 pub use thermostat::Thermostat;
 
 #[cfg(feature = "geo")]
