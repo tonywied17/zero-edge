@@ -103,7 +103,10 @@ impl Adu {
         }
         let mut buffer = [0u8; Self::MAX_LEN];
         buffer[..bytes.len()].copy_from_slice(bytes);
-        Ok(Adu { bytes: buffer, len: bytes.len() })
+        Ok(Adu {
+            bytes: buffer,
+            len: bytes.len(),
+        })
     }
 
     /// Returns the unit address, the first byte of the frame.
@@ -185,12 +188,21 @@ mod tests {
     #[test]
     fn parse_rejects_a_corrupt_crc() {
         let result = Adu::parse(&[0x11, 0x03, 0x00, 0x6B, 0x00, 0x03, 0x00, 0x00]);
-        assert_eq!(result, Err(ModbusError::CrcMismatch { expected: 0x8776, found: 0x0000 }));
+        assert_eq!(
+            result,
+            Err(ModbusError::CrcMismatch {
+                expected: 0x8776,
+                found: 0x0000
+            })
+        );
     }
 
     #[test]
     fn parse_rejects_a_short_frame() {
-        assert_eq!(Adu::parse(&[0x11, 0x03, 0x76]), Err(ModbusError::FrameTooShort));
+        assert_eq!(
+            Adu::parse(&[0x11, 0x03, 0x76]),
+            Err(ModbusError::FrameTooShort)
+        );
     }
 
     #[test]

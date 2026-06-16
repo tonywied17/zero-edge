@@ -115,7 +115,11 @@ impl<'a> Response<'a> {
         if data.len() != usize::from(count).div_ceil(8) {
             return Err(ModbusError::MalformedResponse);
         }
-        Ok(Coils { data, index: 0, remaining: usize::from(count) })
+        Ok(Coils {
+            data,
+            index: 0,
+            remaining: usize::from(count),
+        })
     }
 }
 
@@ -197,7 +201,10 @@ mod tests {
     fn registers_reject_a_byte_count_mismatch() {
         // Byte count says six, but only two data bytes follow.
         let pdu = [0x03, 0x06, 0x02, 0x2B];
-        assert_eq!(Response::new(&pdu).registers().err(), Some(ModbusError::MalformedResponse));
+        assert_eq!(
+            Response::new(&pdu).registers().err(),
+            Some(ModbusError::MalformedResponse)
+        );
     }
 
     #[test]
@@ -215,13 +222,19 @@ mod tests {
     fn coils_reject_a_count_that_does_not_match_the_byte_count() {
         let pdu = [0x01, 0x01, 0x05];
         // Nine coils need two bytes, but only one is present.
-        assert_eq!(Response::new(&pdu).coils(9).err(), Some(ModbusError::MalformedResponse));
+        assert_eq!(
+            Response::new(&pdu).coils(9).err(),
+            Some(ModbusError::MalformedResponse)
+        );
     }
 
     #[test]
     fn an_exception_response_reads_as_an_exception() {
         let pdu = [0x83, 0x02];
-        assert_eq!(Response::new(&pdu).exception(), Some(Exception::IllegalDataAddress));
+        assert_eq!(
+            Response::new(&pdu).exception(),
+            Some(Exception::IllegalDataAddress)
+        );
     }
 
     #[test]

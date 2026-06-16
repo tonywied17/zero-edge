@@ -24,10 +24,17 @@ pub enum ModbusError {
 impl core::fmt::Display for ModbusError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            ModbusError::FrameTooShort => f.write_str("modbus frame is shorter than a valid RTU ADU"),
-            ModbusError::FrameTooLong => f.write_str("modbus frame exceeds the 256-byte RTU maximum"),
+            ModbusError::FrameTooShort => {
+                f.write_str("modbus frame is shorter than a valid RTU ADU")
+            }
+            ModbusError::FrameTooLong => {
+                f.write_str("modbus frame exceeds the 256-byte RTU maximum")
+            }
             ModbusError::CrcMismatch { expected, found } => {
-                write!(f, "modbus CRC mismatch: expected {expected:#06x}, found {found:#06x}")
+                write!(
+                    f,
+                    "modbus CRC mismatch: expected {expected:#06x}, found {found:#06x}"
+                )
             }
             ModbusError::InvalidValueCount => {
                 f.write_str("modbus write request value count is out of range")
