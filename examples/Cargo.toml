@@ -29,6 +29,10 @@ path = "signed_telemetry.rs"
 name = "signed_audit"
 path = "signed_audit.rs"
 
+[[example]]
+name = "batched_telemetry"
+path = "batched_telemetry.rs"
+
 [dependencies]
 pamoja-core = { workspace = true }
 pamoja-codec = { path = "../crates/pamoja-codec" }

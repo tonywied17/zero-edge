@@ -51,7 +51,7 @@ What that means in practice:
 In active development, the following crates and bindings are available:
 
 - `pamoja-core` - the device model and transport, store, event-bus, and error traits.
-- `pamoja-codec` - the pluggable serialization trait with serde-based CBOR, JSON, and raw-bytes codecs behind feature flags.
+- `pamoja-codec` - the pluggable serialization trait with serde-based CBOR, JSON, and raw-bytes codecs behind feature flags, plus delta-and-varint batch encoding and an `f32` quantizer that pack a batch of readings into a fraction of the bytes for metered links.
 - `pamoja-mqtt` - an MQTT client implementing the core `Transport` trait, tested against an embedded broker.
 - `pamoja-coap` - a CoAP client implementing the core `Transport` trait over UDP, with confirmable and non-confirmable delivery and RFC 7641 observe, tested against an in-process server.
 - `pamoja-sync` - offline-first store-and-forward queues implementing the core `Store` trait: an in-memory queue and a crash-safe on-disk queue that survives power loss.
