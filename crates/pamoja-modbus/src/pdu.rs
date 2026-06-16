@@ -164,7 +164,10 @@ impl Pdu {
         for (i, &value) in values.iter().enumerate() {
             bytes[6 + i * 2..8 + i * 2].copy_from_slice(&value.to_be_bytes());
         }
-        Ok(Pdu { bytes, len: 6 + byte_count })
+        Ok(Pdu {
+            bytes,
+            len: 6 + byte_count,
+        })
     }
 
     /// Builds a write-multiple-coils request (function `0x0F`).
@@ -201,7 +204,10 @@ impl Pdu {
                 bytes[6 + i / 8] |= 1u8 << (i % 8);
             }
         }
-        Ok(Pdu { bytes, len: 6 + byte_count })
+        Ok(Pdu {
+            bytes,
+            len: 6 + byte_count,
+        })
     }
 
     /// Builds a PDU from a raw function code and data, the escape hatch for function
@@ -276,33 +282,56 @@ mod tests {
 
     #[test]
     fn write_single_coil_encodes_on_and_off() {
-        assert_eq!(Pdu::write_single_coil(0x00AC, true).as_bytes(), &[0x05, 0x00, 0xAC, 0xFF, 0x00]);
-        assert_eq!(Pdu::write_single_coil(0x00AC, false).as_bytes(), &[0x05, 0x00, 0xAC, 0x00, 0x00]);
+        assert_eq!(
+            Pdu::write_single_coil(0x00AC, true).as_bytes(),
+            &[0x05, 0x00, 0xAC, 0xFF, 0x00]
+        );
+        assert_eq!(
+            Pdu::write_single_coil(0x00AC, false).as_bytes(),
+            &[0x05, 0x00, 0xAC, 0x00, 0x00]
+        );
     }
 
     #[test]
     fn write_single_register_matches_the_spec_example() {
-        assert_eq!(Pdu::write_single_register(0x0001, 0x0003).as_bytes(), &[0x06, 0x00, 0x01, 0x00, 0x03]);
+        assert_eq!(
+            Pdu::write_single_register(0x0001, 0x0003).as_bytes(),
+            &[0x06, 0x00, 0x01, 0x00, 0x03]
+        );
     }
 
     #[test]
     fn write_multiple_registers_matches_the_spec_example() {
         let pdu = Pdu::write_multiple_registers(0x0001, &[0x000A, 0x0102]).unwrap();
-        assert_eq!(pdu.as_bytes(), &[0x10, 0x00, 0x01, 0x00, 0x02, 0x04, 0x00, 0x0A, 0x01, 0x02]);
+        assert_eq!(
+            pdu.as_bytes(),
+            &[0x10, 0x00, 0x01, 0x00, 0x02, 0x04, 0x00, 0x0A, 0x01, 0x02]
+        );
     }
 
     #[test]
     fn write_multiple_coils_packs_bits_lsb_first() {
         // The spec's ten-coil example packs to 0xCD, 0x01.
-        let values = [true, false, true, true, false, false, true, true, true, false];
+        let values = [
+            true, false, true, true, false, false, true, true, true, false,
+        ];
         let pdu = Pdu::write_multiple_coils(0x0013, &values).unwrap();
-        assert_eq!(pdu.as_bytes(), &[0x0F, 0x00, 0x13, 0x00, 0x0A, 0x02, 0xCD, 0x01]);
+        assert_eq!(
+            pdu.as_bytes(),
+            &[0x0F, 0x00, 0x13, 0x00, 0x0A, 0x02, 0xCD, 0x01]
+        );
     }
 
     #[test]
     fn an_empty_write_is_rejected() {
-        assert_eq!(Pdu::write_multiple_registers(0, &[]), Err(ModbusError::InvalidValueCount));
-        assert_eq!(Pdu::write_multiple_coils(0, &[]), Err(ModbusError::InvalidValueCount));
+        assert_eq!(
+            Pdu::write_multiple_registers(0, &[]),
+            Err(ModbusError::InvalidValueCount)
+        );
+        assert_eq!(
+            Pdu::write_multiple_coils(0, &[]),
+            Err(ModbusError::InvalidValueCount)
+        );
     }
 
     #[test]
@@ -313,7 +342,10 @@ mod tests {
             Err(ModbusError::InvalidValueCount)
         );
         let coils = [false; Pdu::MAX_WRITE_COILS + 1];
-        assert_eq!(Pdu::write_multiple_coils(0, &coils), Err(ModbusError::InvalidValueCount));
+        assert_eq!(
+            Pdu::write_multiple_coils(0, &coils),
+            Err(ModbusError::InvalidValueCount)
+        );
     }
 
     #[test]
@@ -338,6 +370,9 @@ mod tests {
     #[test]
     fn to_adu_appends_the_address_and_crc() {
         let frame = Pdu::read_holding_registers(0x006B, 3).to_adu(0x11);
-        assert_eq!(frame.as_bytes(), &[0x11, 0x03, 0x00, 0x6B, 0x00, 0x03, 0x76, 0x87]);
+        assert_eq!(
+            frame.as_bytes(),
+            &[0x11, 0x03, 0x00, 0x6B, 0x00, 0x03, 0x76, 0x87]
+        );
     }
 }
