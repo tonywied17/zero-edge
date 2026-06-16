@@ -27,7 +27,9 @@ impl core::fmt::Display for MeshError {
             MeshError::FrameTooShort => {
                 f.write_str("mesh frame is shorter than its header and checksum")
             }
-            MeshError::FrameTooLong => f.write_str("mesh frame is larger than the maximum frame size"),
+            MeshError::FrameTooLong => {
+                f.write_str("mesh frame is larger than the maximum frame size")
+            }
             MeshError::PayloadTooLong => {
                 f.write_str("mesh payload is larger than a single frame can carry")
             }
@@ -35,7 +37,10 @@ impl core::fmt::Display for MeshError {
                 write!(f, "unsupported mesh protocol version {version}")
             }
             MeshError::CrcMismatch { expected, found } => {
-                write!(f, "mesh CRC mismatch: expected {expected:#06x}, found {found:#06x}")
+                write!(
+                    f,
+                    "mesh CRC mismatch: expected {expected:#06x}, found {found:#06x}"
+                )
             }
         }
     }

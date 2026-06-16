@@ -328,7 +328,10 @@ mod tests {
         assert_eq!(frame.as_bytes().len(), Frame::MAX_LEN);
 
         let too_big = [0u8; Frame::MAX_PAYLOAD + 1];
-        assert_eq!(Frame::new(1, 2, 3, &too_big), Err(MeshError::PayloadTooLong));
+        assert_eq!(
+            Frame::new(1, 2, 3, &too_big),
+            Err(MeshError::PayloadTooLong)
+        );
     }
 
     #[test]
@@ -347,14 +350,20 @@ mod tests {
     fn parse_rejects_an_unknown_version() {
         let mut bytes = Frame::new(1, 2, 3, b"x").unwrap().as_bytes().to_vec();
         bytes[0] = 0xFF;
-        assert_eq!(Frame::parse(&bytes), Err(MeshError::UnsupportedVersion(0xFF)));
+        assert_eq!(
+            Frame::parse(&bytes),
+            Err(MeshError::UnsupportedVersion(0xFF))
+        );
     }
 
     #[test]
     fn parse_rejects_a_corrupt_payload() {
         let mut bytes = Frame::new(1, 2, 3, b"data").unwrap().as_bytes().to_vec();
         bytes[12] ^= 0xFF; // flip a payload byte
-        assert!(matches!(Frame::parse(&bytes), Err(MeshError::CrcMismatch { .. })));
+        assert!(matches!(
+            Frame::parse(&bytes),
+            Err(MeshError::CrcMismatch { .. })
+        ));
     }
 
     #[test]
@@ -377,7 +386,9 @@ mod tests {
 
     #[test]
     fn relaying_spends_a_hop_and_keeps_everything_else() {
-        let frame = Frame::new(0xAA, 0xBB, 5, b"flood").unwrap().with_hop_limit(2);
+        let frame = Frame::new(0xAA, 0xBB, 5, b"flood")
+            .unwrap()
+            .with_hop_limit(2);
         let forwarded = frame.relayed().unwrap();
         assert_eq!(forwarded.hop_limit(), 1);
         assert_eq!(forwarded.src(), frame.src());
