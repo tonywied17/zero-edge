@@ -10,6 +10,10 @@
 //!   interop and debugging.
 //! - [`BytesCodec`] (always available) - a no-op codec that carries raw bytes.
 //!
+//! For metered links it also packs batches of samples into far fewer bytes:
+//! [`encode_deltas`] delta-encodes a series of integers, and [`Quantizer`] rounds
+//! `f32` readings to a fixed precision and delta-encodes them.
+//!
 //! # Examples
 //!
 //! A little-endian codec for `u32` values:
@@ -42,6 +46,9 @@ use pamoja_core::Result;
 
 mod bytes;
 pub use bytes::BytesCodec;
+
+mod delta;
+pub use delta::{decode_deltas, encode_deltas, Quantizer};
 
 #[cfg(feature = "cbor")]
 mod cbor;
