@@ -41,6 +41,14 @@ path = "telemetry.rs"
 name = "lora_budget"
 path = "lora_budget.rs"
 
+[[example]]
+name = "conformance"
+path = "conformance.rs"
+
+[[test]]
+name = "conformance"
+path = "tests/conformance.rs"
+
 [dependencies]
 pamoja-core = { workspace = true }
 pamoja-codec = { path = "../crates/pamoja-codec" }
