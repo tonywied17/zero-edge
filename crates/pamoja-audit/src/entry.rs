@@ -113,7 +113,9 @@ impl Entry {
     /// an entry header.
     pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
         if bytes.len() < HEADER_LEN {
-            return Err(Error::Codec("audit entry is shorter than its header".into()));
+            return Err(Error::Codec(
+                "audit entry is shorter than its header".into(),
+            ));
         }
         let index = u64::from_le_bytes(bytes[..8].try_into().expect("eight index bytes"));
         let prev: [u8; 32] = bytes[8..40].try_into().expect("thirty-two previous bytes");
