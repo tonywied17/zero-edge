@@ -20,6 +20,7 @@ members = [
     "crates/pamoja-modbus",
     "crates/pamoja-mesh",
     "crates/pamoja-lorawan",
+    "crates/pamoja-routing",
     "crates/pamoja-bus",
     "crates/xtask",
     "examples",

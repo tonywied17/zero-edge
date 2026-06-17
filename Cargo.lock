@@ -1532,6 +1532,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "pamoja-routing"
+version = "0.1.6"
+
+[[package]]
 name = "pamoja-security"
 version = "0.1.6"
 dependencies = [
