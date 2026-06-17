@@ -1,0 +1,12 @@
+[package]
+name = "pamoja-routing"
+description = "Cost-aware mesh routing for pamoja: a bounded routing table that learns reverse-path routes from the traffic it hears and decides whether to deliver, relay toward a destination, or fall back to flooding, so a mesh forwards instead of blindly flooding, no_std and allocation-free."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[lints]
+workspace = true
