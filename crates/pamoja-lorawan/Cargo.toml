@@ -1,6 +1,6 @@
 [package]
 name = "pamoja-lorawan"
-description = "LoRaWAN 1.0.x MAC framing for pamoja: build and parse data-frame PHYPayloads with the message integrity code and payload encryption the spec mandates, so a long-range node speaks LoRaWAN, no_std and allocation-free. The secured-packet half ahead of the radio driver."
+description = "LoRaWAN 1.0.x MAC framing for pamoja: build and parse data-frame PHYPayloads with the message integrity code and payload encryption the spec mandates, plus the over-the-air-activation join exchange, so a long-range node speaks LoRaWAN, no_std and allocation-free. The secured-packet half ahead of the radio driver."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
