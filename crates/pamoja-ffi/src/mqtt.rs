@@ -508,4 +508,36 @@ mod tests {
         let client = unsafe { pamoja_mqtt_client_new(ptr::null()) };
         assert!(client.is_null());
     }
+
+    #[test]
+    fn calls_on_a_null_client_are_rejected() {
+        // Safety: every entry point tolerates a null handle without dereferencing it.
+        let status =
+            unsafe { pamoja_mqtt_client_publish(ptr::null_mut(), ptr::null(), ptr::null(), 0) };
+        assert_eq!(status, PamojaStatus::InvalidArgument);
+        // Freeing null is a documented no-op.
+        unsafe { pamoja_mqtt_client_free(ptr::null_mut()) };
+    }
+
+    #[test]
+    fn a_null_topic_is_rejected_before_any_network_use() {
+        let client_id = CString::new("audit").expect("no null byte");
+        let host = CString::new("localhost").expect("no null byte");
+        let config = PamojaMqttConfig {
+            client_id: client_id.as_ptr(),
+            host: host.as_ptr(),
+            port: 1883,
+            keep_alive_secs: 0,
+            capacity: 0,
+            qos: PamojaQos::AtMostOnce,
+        };
+        // Safety: the config and its borrowed strings are valid for the call.
+        let client = unsafe { pamoja_mqtt_client_new(&config) };
+        assert!(!client.is_null());
+        // A null topic is caught before any connection is attempted.
+        let status = unsafe { pamoja_mqtt_client_publish(client, ptr::null(), ptr::null(), 0) };
+        assert_eq!(status, PamojaStatus::InvalidArgument);
+        // Safety: the handle came from client_new and has not been freed.
+        unsafe { pamoja_mqtt_client_free(client) };
+    }
 }

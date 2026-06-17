@@ -264,4 +264,27 @@ mod tests {
             .without_crc();
         assert!(lean.airtime_us(20) < full.airtime_us(20));
     }
+
+    #[test]
+    fn a_zero_byte_payload_still_costs_the_preamble_and_header() {
+        // Even with no payload, the preamble and header occupy the air.
+        let link = LinkSettings::new(7, 125_000);
+        assert!(link.airtime_us(0) > 0);
+        assert!(link.airtime_us(0) < link.airtime_us(10));
+    }
+
+    #[test]
+    fn airtime_grows_with_the_payload() {
+        let link = LinkSettings::new(10, 125_000);
+        assert!(link.airtime_us(1) <= link.airtime_us(10));
+        assert!(link.airtime_us(10) < link.airtime_us(64));
+    }
+
+    #[test]
+    fn a_wider_bandwidth_is_faster() {
+        // Doubling the bandwidth roughly halves the time on air.
+        let narrow = LinkSettings::new(9, 125_000).airtime_us(20);
+        let wide = LinkSettings::new(9, 250_000).airtime_us(20);
+        assert!(wide < narrow);
+    }
 }
