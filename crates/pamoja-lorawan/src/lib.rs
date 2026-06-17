@@ -20,6 +20,9 @@
 //! - [`Uplink`] and [`Downlink`] - the data frame to send, built up from the fields a
 //!   sender sets (confirmed, adaptive data rate, acknowledgement, frame options).
 //! - [`RxData`] - a decoded frame: its header fields and its recovered payload.
+//! - [`Device`] - the root credentials for over-the-air activation: it builds the
+//!   join-request a device broadcasts and turns the network's join-accept into a ready
+//!   [`Session`], deriving the session keys the spec prescribes.
 //!
 //! The cryptography is the LoRaWAN construction over AES-128: an AES-CMAC MIC and an
 //! AES keystream for the payload, with the device address and frame counter folded into
@@ -48,8 +51,10 @@
 mod crypto;
 mod error;
 mod frame;
+mod join;
 mod session;
 
 pub use error::LorawanError;
 pub use frame::{Direction, PhyPayload, MAX_FRAME, MAX_PAYLOAD};
+pub use join::{Device, JoinAccept};
 pub use session::{Downlink, RxData, Session, Uplink};

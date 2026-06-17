@@ -12,6 +12,8 @@ pub const MAX_FRAME: usize = 256;
 pub const MAX_PAYLOAD: usize = MAX_FRAME - 13;
 
 // MType values, in the top three bits of the MHDR.
+pub(crate) const MTYPE_JOIN_REQUEST: u8 = 0x00;
+pub(crate) const MTYPE_JOIN_ACCEPT: u8 = 0x20;
 pub(crate) const MTYPE_UNCONFIRMED_UP: u8 = 0x40;
 pub(crate) const MTYPE_UNCONFIRMED_DOWN: u8 = 0x60;
 pub(crate) const MTYPE_CONFIRMED_UP: u8 = 0x80;

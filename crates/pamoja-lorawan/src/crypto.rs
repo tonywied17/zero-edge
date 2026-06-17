@@ -63,6 +63,19 @@ impl Cipher {
         self.encrypt_block(&x)
     }
 
+    // Decrypts one 16-byte block. A network encrypts a join-accept with AES decryption so
+    // a device recovers it with AES encryption; this is only needed to forge a join-accept
+    // in tests.
+    #[cfg(test)]
+    pub(crate) fn decrypt_block(&self, block: &[u8; 16]) -> [u8; 16] {
+        use aes::cipher::BlockDecrypt;
+        let mut buf = GenericArray::clone_from_slice(block);
+        self.inner.decrypt_block(&mut buf);
+        let mut out = [0u8; 16];
+        out.copy_from_slice(buf.as_slice());
+        out
+    }
+
     // The two CMAC subkeys, each a GF(2^128) doubling of the cipher applied to zero.
     fn subkeys(&self) -> ([u8; 16], [u8; 16]) {
         let l = self.encrypt_block(&[0u8; 16]);
