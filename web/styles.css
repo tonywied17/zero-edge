@@ -359,6 +359,22 @@ section { position: relative; }
 .cg-name { font-family: var(--mono); font-size: 1rem; color: var(--cream); margin: 0 0 0.5rem; }
 .cg-blurb { font-size: 0.86rem; color: #c1cee0; margin: 0; line-height: 1.5; }
 
+/* Crate status filter: isolate shipping crates or the roadmap so neither the
+   constellation nor the grid has to show everything at once. */
+.crate-filter {
+  display: flex; gap: 0.3rem; width: fit-content; margin: -0.4rem auto 2rem; padding: 0.3rem;
+  border-radius: 999px; background: rgba(7, 14, 24, 0.5); border: 1px solid var(--line);
+}
+.cf-btn {
+  cursor: pointer; border: 0; background: transparent; color: var(--muted);
+  padding: 0.5rem 1.15rem; border-radius: 999px; font-family: var(--sans);
+  font-size: 0.86rem; font-weight: 600; transition: color 0.2s ease, background 0.2s ease;
+}
+.cf-btn:hover { color: var(--cream); }
+.cf-btn.active { background: linear-gradient(135deg, var(--amber), var(--coral)); color: #2a1606; }
+.crate-stage[data-filter='shipping'] [data-kind='roadmap'] { display: none; }
+.crate-stage[data-filter='roadmap'] [data-kind='shipping'] { display: none; }
+
 /* ---------- Languages ---------- */
 /* width:100% is load-bearing: margin:0 auto makes this a flex item with auto
    cross-axis margins, which disables stretch, so without an explicit width it
