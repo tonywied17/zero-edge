@@ -303,10 +303,34 @@ export const PLANNED_CRATES = [
   {
     id: 'pamoja-mavlink',
     name: 'pamoja-mavlink',
+    role: 'drones · planned',
+    planned: true,
+    blurb:
+      'MAVLink for drones - mission, telemetry, and offboard control - modelled as an ordinary pamoja device and interoperable with PX4 and ArduPilot, so a survey flight is driven from the same API as any sensor.',
+  },
+  {
+    id: 'pamoja-ros2',
+    name: 'pamoja-ros2',
     role: 'robotics · planned',
     planned: true,
     blurb:
-      'MAVLink for drones and a ROS 2 / Zenoh bridge for robots, modelled as ordinary pamoja devices so the same code that reads a sensor can fly a survey or drive an actuator.',
+      'A ROS 2 and Zenoh bridge so a robot, its topics, and its services appear as ordinary pamoja devices on the event bus, drivable from any binding without leaving the SDK.',
+  },
+  {
+    id: 'pamoja-sema',
+    name: 'pamoja-sema',
+    role: 'language · planned',
+    planned: true,
+    blurb:
+      'Sema, a small sentence-driven language for saying what a device should do ("when the tank drops below 20 percent, open the valve") - readable in many human languages and compiled to the same profile the engine runs, so it costs nothing at runtime.',
+  },
+  {
+    id: 'pamoja-ble',
+    name: 'pamoja-ble',
+    role: 'messaging · planned',
+    planned: true,
+    blurb:
+      'Bluetooth Low Energy for phone-to-node setup in the field and the cheap sensors that only speak BLE, behind the same Transport trait as every other link.',
   },
 ];
 

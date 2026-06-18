@@ -125,12 +125,14 @@ function buildConstellation()
       line.setAttribute('stroke-width', '0.4');
       if (planned) line.setAttribute('stroke-dasharray', '1.6 1.8');
       line.dataset.line = c.id;
+      line.dataset.kind = planned ? 'roadmap' : 'shipping';
       svg.appendChild(line);
 
       const node = el('button', 'crate-node' + (planned ? ' planned' : ''), c.name);
       node.style.left = x + '%';
       node.style.top = y + '%';
       node.dataset.crate = c.id;
+      node.dataset.kind = planned ? 'roadmap' : 'shipping';
       stage.appendChild(node);
     });
   };
@@ -196,17 +198,41 @@ function buildCrateGrid()
     return node;
   };
 
-  const group = (title, list) =>
+  const group = (title, list, kind) =>
   {
-    grid.appendChild(el('p', 'cg-head', title));
+    const wrap = el('div', 'cg-group');
+    wrap.dataset.kind = kind;
+    wrap.appendChild(el('p', 'cg-head', title));
     const cards = el('div', 'cg-cards');
     list.forEach((c) => cards.appendChild(card(c)));
-    grid.appendChild(cards);
+    wrap.appendChild(cards);
+    grid.appendChild(wrap);
   };
 
-  group('Shipping now', CRATES);
-  group('On the roadmap', PLANNED_CRATES);
+  group('Shipping now', CRATES, 'shipping');
+  group('On the roadmap', PLANNED_CRATES, 'roadmap');
   stage.appendChild(grid);
+}
+
+// The filter chips isolate the shipping crates, the roadmap, or both, so the
+// constellation and the card grid never have to show all of them at once.
+function wireCrateFilter()
+{
+  const filter = $('#crate-filter');
+  const stage = $('.crate-stage');
+  if (!filter || !stage) return;
+  const apply = (f) =>
+  {
+    stage.dataset.filter = f;
+    $$('.cf-btn', filter).forEach((b) =>
+    {
+      const on = b.dataset.filter === f;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+  };
+  $$('.cf-btn', filter).forEach((b) => b.addEventListener('click', () => apply(b.dataset.filter)));
+  apply('shipping');
 }
 
 // Hamburger menu for narrow screens: toggle the panel, close on link tap or
@@ -425,6 +451,7 @@ export function initUI({ onScene })
   mountConsoles();
   buildConstellation();
   buildCrateGrid();
+  wireCrateFilter();
   buildLanguages();
   const form = wireForm();
   buildTiers(form);
