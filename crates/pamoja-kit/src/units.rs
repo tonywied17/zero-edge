@@ -187,8 +187,16 @@ mod tests {
 
     #[test]
     fn temperature_round_trips() {
-        assert!(approx(fahrenheit_to_celsius(celsius_to_fahrenheit(21.0)), 21.0, 1e-3));
-        assert!(approx(kelvin_to_celsius(celsius_to_kelvin(21.0)), 21.0, 1e-3));
+        assert!(approx(
+            fahrenheit_to_celsius(celsius_to_fahrenheit(21.0)),
+            21.0,
+            1e-3
+        ));
+        assert!(approx(
+            kelvin_to_celsius(celsius_to_kelvin(21.0)),
+            21.0,
+            1e-3
+        ));
     }
 
     #[test]
