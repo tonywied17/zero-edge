@@ -252,10 +252,22 @@ mod tests {
     #[test]
     fn ten_bit_frame_at_the_range_bounds() {
         // 0x000: prefix only, low byte zero.
-        assert_frame(Address::ten_bit(0x000).unwrap(), Direction::Write, &[0xF0, 0x00]);
+        assert_frame(
+            Address::ten_bit(0x000).unwrap(),
+            Direction::Write,
+            &[0xF0, 0x00],
+        );
         // 0x3FF: top two bits set (11110 11 r/w), low byte all ones.
-        assert_frame(Address::ten_bit(0x3FF).unwrap(), Direction::Write, &[0xF6, 0xFF]);
-        assert_frame(Address::ten_bit(0x3FF).unwrap(), Direction::Read, &[0xF7, 0xFF]);
+        assert_frame(
+            Address::ten_bit(0x3FF).unwrap(),
+            Direction::Write,
+            &[0xF6, 0xFF],
+        );
+        assert_frame(
+            Address::ten_bit(0x3FF).unwrap(),
+            Direction::Read,
+            &[0xF7, 0xFF],
+        );
     }
 
     #[test]
@@ -271,11 +283,17 @@ mod tests {
     fn reserved_ranges_match_the_spec() {
         // Reserved: 0x00..=0x07 and 0x78..=0x7F.
         for addr in (0x00..=0x07).chain(0x78..=0x7F) {
-            assert!(Address::seven_bit(addr).unwrap().is_reserved(), "{addr:#04x}");
+            assert!(
+                Address::seven_bit(addr).unwrap().is_reserved(),
+                "{addr:#04x}"
+            );
         }
         // The usable range is everything between.
         for addr in 0x08..=0x77 {
-            assert!(!Address::seven_bit(addr).unwrap().is_reserved(), "{addr:#04x}");
+            assert!(
+                !Address::seven_bit(addr).unwrap().is_reserved(),
+                "{addr:#04x}"
+            );
         }
         // A 10-bit address is never reserved in the 7-bit sense.
         assert!(!Address::ten_bit(0x002).unwrap().is_reserved());
@@ -295,12 +313,16 @@ mod tests {
 
         let mut empty = [];
         assert_eq!(
-            Address::seven_bit(0x40).unwrap().write_frame(Direction::Write, &mut empty),
+            Address::seven_bit(0x40)
+                .unwrap()
+                .write_frame(Direction::Write, &mut empty),
             Err(GpioError::BufferTooSmall)
         );
         let mut one = [0u8; 1];
         assert_eq!(
-            Address::ten_bit(0x100).unwrap().write_frame(Direction::Write, &mut one),
+            Address::ten_bit(0x100)
+                .unwrap()
+                .write_frame(Direction::Write, &mut one),
             Err(GpioError::BufferTooSmall)
         );
     }
