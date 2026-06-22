@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en" dir="ltr" data-theme="night">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark light" />
+    <title>pamoja</title>
+    <!-- Relative base so the page works served from the device root or any subpath
+         (e.g. a GitHub Pages project subfolder). -->
+    <base href="./" />
+    <!-- Apply the saved theme before first paint so the boot splash never flashes the
+         wrong theme (zQuery stores it JSON-encoded under "theme"). -->
+    <script>
+      try { var _t = JSON.parse(localStorage.getItem('theme')); if (_t === 'night' || _t === 'day') document.documentElement.dataset.theme = _t; } catch (e) {}
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="global.css" />
+    <script src="zquery.min.js"></script>
+    <script type="module" src="app/app.js"></script>
+  </head>
+  <body>
+    <div id="space-bg" aria-hidden="true"></div>
+    <top-bar></top-bar>
+    <z-outlet class="outlet"></z-outlet>
+    <sensor-modal></sensor-modal>
+    <manage-modal></manage-modal>
+    <group-modal></group-modal>
+    <mesh-modal></mesh-modal>
+    <network-view></network-view>
+    <alarm-bar></alarm-bar>
+    <div id="offline-tag" class="offline-tag" hidden></div>
+    <div id="boot"><div class="boot-mark"></div></div>
+  </body>
+</html>

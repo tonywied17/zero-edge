@@ -2293,6 +2293,17 @@ name = "pamoja-core"
 version = "0.1.10"
 
 [[package]]
+name = "pamoja-dashboard"
+version = "0.1.10"
+dependencies = [
+ "pamoja-power",
+ "pamoja-profile",
+ "pamoja-telemetry",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "pamoja-examples"
 version = "0.1.10"
 dependencies = [

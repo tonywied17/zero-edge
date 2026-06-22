@@ -1,12 +1,16 @@
 name: Deploy showcase to Pages
 
-# Publishes the static showcase in web/ to GitHub Pages. Set the Pages source to
-# "GitHub Actions" once (Settings -> Pages -> Build and deployment -> Source).
+# Publishes the static showcase in web/ to GitHub Pages, and bundles the local-first
+# dashboard demo at /dashboard. The dashboard is a serverless build: when no device
+# answers GET /state it loads the mock snapshots generated here (state.<scenario>.json),
+# so the whole UI runs with no backend. Set the Pages source to "GitHub Actions" once
+# (Settings -> Pages -> Build and deployment -> Source).
 on:
   push:
     branches: [main]
     paths:
       - 'web/**'
+      - 'crates/pamoja-dashboard/**'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
@@ -26,10 +30,24 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/configure-pages@v5
+      - name: Cache cargo
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-pages-cargo-${{ hashFiles('**/Cargo.toml') }}
+      - name: Assemble site (showcase at root, dashboard demo at /dashboard)
+        run: |
+          mkdir -p dist/dashboard
+          cp -r web/. dist/
+          cp -r crates/pamoja-dashboard/web/. dist/dashboard/
+          cargo run -p pamoja-dashboard --bin snapshot -- dist/dashboard
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: web
+          path: dist
       - id: deployment
         uses: actions/deploy-pages@v4

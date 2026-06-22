@@ -1,0 +1,29 @@
+[package]
+name = "pamoja-dashboard"
+description = "Local-first device dashboard for pamoja: a node serves a hand-built, localized web UI over its own hotspot from a language-neutral state snapshot, fully offline."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+# Not yet published: the serving tiers and localization CI are still being built.
+publish = false
+
+[features]
+# The data contract and the mock are always available; the host-side HTTP/SSE
+# server is opt-in (but on by default) so the contract can be reused without it.
+default = ["serve"]
+serve = []
+
+[dependencies]
+# Only the data types are read from these crates to build the snapshot; the
+# dashboard never drives control itself.
+pamoja-telemetry = { path = "../pamoja-telemetry", version = "0.1.10" }
+pamoja-profile = { path = "../pamoja-profile", version = "0.1.10" }
+pamoja-power = { path = "../pamoja-power", version = "0.1.10" }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1" }
+
+[lints]
+workspace = true

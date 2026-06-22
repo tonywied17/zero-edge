@@ -33,6 +33,10 @@ const TASKS: &[(&str, &str)] = &[
         "ros",
         "build the ROS 2 + Zenoh dev container and run the bridge tests inside it",
     ),
+    (
+        "dashboard",
+        "run the local-first dashboard dev server with mock data (dashboard dev [scenario])",
+    ),
 ];
 
 /// The tag for the ROS 2 + Zenoh dev image built from `.devcontainer/Dockerfile`.
@@ -95,6 +99,10 @@ fn main() -> ExitCode {
 
     if task == "ros" {
         return ros(&args.collect::<Vec<_>>());
+    }
+
+    if task == "dashboard" {
+        return dashboard(&args.collect::<Vec<_>>());
     }
 
     match TASKS.iter().find(|(name, _)| *name == task) {
@@ -281,6 +289,30 @@ fn ros(args: &[String]) -> ExitCode {
         ExitCode::SUCCESS
     } else {
         eprintln!("xtask ros: tests failed");
+        ExitCode::FAILURE
+    }
+}
+
+/// Run the local-first dashboard dev server, backed by the hardware-free mock.
+///
+/// Forwards its arguments to the `dev` binary in `pamoja-dashboard`, so
+/// `cargo xtask dashboard dev alarm` serves the alarm scenario. A leading `dev`
+/// subcommand word is optional and dropped, and any other arguments (a scenario key,
+/// `--addr`, `--embedded`, `--interval-ms`) pass straight through.
+fn dashboard(args: &[String]) -> ExitCode {
+    let forwarded: Vec<&String> = args
+        .iter()
+        .skip_while(|arg| arg.as_str() == "dev")
+        .collect();
+
+    let mut cmd = Command::new("cargo");
+    cmd.args(["run", "-p", "pamoja-dashboard", "--bin", "dev", "--"]);
+    cmd.args(&forwarded);
+
+    if run(&mut cmd) {
+        ExitCode::SUCCESS
+    } else {
+        eprintln!("xtask dashboard: dev server exited with an error");
         ExitCode::FAILURE
     }
 }

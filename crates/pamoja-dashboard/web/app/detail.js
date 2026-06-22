@@ -1,0 +1,84 @@
+// detail.js - the shared sensor detail body.
+//
+// Rendered both in the full-screen sensor modal (opened from the grid) and as a docked
+// side panel inside the network view (opened from a node), so the two never drift. It
+// is just the body - the big visualization, history graph, stat grid, and a fuller
+// scrollable event log; each caller wraps it with its own header.
+
+import { t, nf, fmt, ago } from './i18n.js';
+import { tileViz, detailGraph, trendArrow, isDiscrete, vizFor, esc } from './viz.js';
+
+// Keeps a detail panel's event log pinned to the bottom (newest) on each update, but
+// releases the pin while the user is scrolled up and resumes once they return to the
+// bottom. Call from a component's updated() with its root element.
+export function stickLog(root) {
+  if (!root) return;
+  root.querySelectorAll('.dlog').forEach((d) => {
+    if (!d._bound) {
+      d._bound = true;
+      d._stick = true;
+      d.addEventListener('scroll', () => { d._stick = d.scrollHeight - d.scrollTop - d.clientHeight < 40; });
+    }
+    if (d._stick) d.scrollTop = d.scrollHeight;
+  });
+}
+
+export function sensorDetailBody(s) {
+  const r = s.reading;
+  const h = s.history || [];
+  const min = h.length ? Math.min(...h) : r.value;
+  const max = h.length ? Math.max(...h) : r.value;
+  const avg = h.length ? h.reduce((a, b) => a + b, 0) / h.length : r.value;
+  const u = t('unit.' + r.unit);
+  const stat = (label, val, unit) => `<div class="statbox"><span>${label}</span><b>${val}${unit ? `<i>${unit}</i>` : ''}</b></div>`;
+  const samples = h.slice(0, -1).reverse().slice(0, 8).map((v, i) => ({ level: 'info', code: 'reading.ok', value: v, ageSecs: (i + 1) * 30 + 20 }));
+  // Oldest first so newest sits at the bottom, like a live console that auto-scrolls.
+  const merged = [...(s.events || []), ...samples].sort((a, b) => (b.ageSecs || 0) - (a.ageSecs || 0)).slice(-10);
+  const events = merged.map((e) => {
+    const v = e.value != null ? ' · ' + fmt(e.value) : '';
+    const time = e.ageSecs != null ? ago(e.ageSecs) : '';
+    return `<div class="dlog-line" data-level="${e.level}"><span class="lt">${time}</span><span class="lm">${esc(t('event.' + e.code))}${v}</span></div>`;
+  }).join('') || `<div class="dlog-line"><span class="lm">${t('ui.noEvents')}</span></div>`;
+
+  // A discrete reading has a state chip instead of a value+gauge, so it skips the numeric
+  // history graph and min/max grid - only its state, cadence, and event log are shown. The
+  // acoustic waveform is the exception: it shows the full numeric detail (dB value, band,
+  // history) with the equaliser as the hero, since its level genuinely is a measurement.
+  if (isDiscrete(r) && vizFor(r.key, r.unit) !== 'wave') {
+    return `
+      <div class="modal-hero hero-discrete">
+        ${tileViz(s, true)}
+      </div>
+      <div class="modal-body">
+        <div>
+          <div class="statgrid">
+            ${stat(t('ui.cadence'), t('mode.' + s.mode))}
+            ${s.battery != null ? stat(t('ui.battery'), nf(s.battery, { style: 'percent', maximumFractionDigits: 0 })) : ''}
+          </div>
+        </div>
+        <div class="span"><div class="dsection">${t('ui.events')}</div><div class="dlog">${events}</div></div>
+        <div class="span dsection" style="margin:0">${t('ui.sensorId')}: ${esc(s.id)}</div>
+      </div>`;
+  }
+
+  return `
+    <div class="modal-hero">
+      ${tileViz(s, true)}
+      <div class="modal-readout"><b>${fmt(r.value)}</b><span>${u}</span>${r.trend ? `<span class="strend" data-dir="${r.trend}">${trendArrow(r.trend)}</span>` : ''}</div>
+    </div>
+    <div class="modal-body">
+      <div class="span"><div class="dsection">${t('ui.history')}</div>${detailGraph(h, r.band)}</div>
+      <div>
+        <div class="statgrid">
+          ${stat(t('ui.min'), fmt(min), u)}
+          ${stat(t('ui.max'), fmt(max), u)}
+          ${stat(t('ui.avg'), fmt(avg), u)}
+          ${r.band ? stat(t('ui.band'), `${nf(r.band[0])}–${nf(r.band[1])}`, u) : ''}
+          ${s.battery != null ? stat(t('ui.battery'), nf(s.battery, { style: 'percent', maximumFractionDigits: 0 })) : ''}
+          ${stat(t('ui.cadence'), t('mode.' + s.mode))}
+        </div>
+      </div>
+      <div class="span"><div class="dsection">${t('ui.events')}</div><div class="dlog">${events}</div></div>
+      <div class="span dsection" style="margin:0">${t('ui.sensorId')}: ${esc(s.id)}</div>
+    </div>`;
+}
