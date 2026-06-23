@@ -32,7 +32,7 @@ function isMeshSensor(sid)
 }
 
 $.component('dashboard-page', {
-  state: { tick: 0 },
+  state: { tick: 0, orgOpen: false },
 
   mounted()
   {
@@ -40,6 +40,8 @@ $.component('dashboard-page', {
     this._stop = $.effect(() => { currentFleet(); if (!this._drag) this.setState({}); });
     this._un = store.subscribe(() => { if (!this._drag) this.setState({}); });
     this._ro = new ResizeObserver(() => this.scheduleLayout());
+    this._onResize = () => this.scheduleLayout();
+    window.addEventListener('resize', this._onResize);
     this.bindDrag();
   },
   updated()
@@ -54,6 +56,7 @@ $.component('dashboard-page', {
     if (typeof this._stop === 'function') this._stop();
     if (this._un) this._un();
     if (this._ro) this._ro.disconnect();
+    if (this._onResize) window.removeEventListener('resize', this._onResize);
     if (this._raf) cancelAnimationFrame(this._raf);
   },
 
@@ -192,14 +195,26 @@ $.component('dashboard-page', {
 
   orgtabs(f)
   {
-    const sel = this.selectedOrg(f);
-    return `<div class="orgtabs" role="tablist">
-      ${f.orgs.map((o) => `<a class="orgtab" role="tab" aria-selected="${sel && o.id === sel.id}" z-link="/org/${o.id}">
-        <span class="dotc"></span>${esc(o.name)} <span class="count">${nf(o.groups.length)}</span></a>`).join('')}
+    const sel = this.selectedOrg(f) || f.orgs[0];
+    const open = this.state.orgOpen;
+    const menu = f.orgs.map((o) => `<a class="orgsel-item ${sel && o.id === sel.id ? 'on' : ''}" z-link="/org/${o.id}" @click="closeOrg">
+        <span class="dotc"></span><span class="orgsel-iname">${esc(o.name)}</span><span class="count">${nf(o.groups.length)}</span></a>`).join('');
+    return `<div class="orgbar">
+      <div class="orgsel ${open ? 'open' : ''}" @click.outside="closeOrg">
+        <button class="orgsel-btn" type="button" @click="toggleOrg" aria-expanded="${open ? 'true' : 'false'}">
+          <span class="dotc"></span>
+          <span class="orgsel-cur">${esc(sel ? sel.name : t('ui.orgs'))}</span>
+          <span class="count">${sel ? nf(sel.groups.length) : ''}</span>
+          <svg class="orgsel-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="orgsel-menu">${menu}</div>
+      </div>
       <button class="seg manage ${store.state.editing ? 'on' : ''}" type="button" @click="onManage">${store.state.editing ? '✓ ' + t('ui.done') : '✎ ' + t('ui.manage')}</button>
     </div>`;
   },
 
+  toggleOrg() { this.setState({ orgOpen: !this.state.orgOpen }); },
+  closeOrg() { if (this.state.orgOpen) this.setState({ orgOpen: false }); },
   onManage() { store.dispatch('toggleEditing'); },
 
   groups(f)
