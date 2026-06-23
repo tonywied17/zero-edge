@@ -5,11 +5,18 @@
 // that sensor's detail modal - so you triage alarms instead of hunting for them.
 
 import { store } from '../store.js';
-import { currentFleet } from '../edits.js';
+import { currentFleet } from '../lib/edits.js';
 import { open, back } from '../nav.js';
-import { t, nf, fmt } from '../i18n.js';
-import { esc } from '../viz.js';
+import { t, nf, fmt } from '../lib/i18n.js';
+import { esc } from '../lib/viz/index.js';
 
+/**
+ * Collects every sensor needing attention plus offline groups, alarms first.
+ *
+ * @param {object} f - the current fleet, or a falsy value before the first frame.
+ * @returns {Array<object>} the problem rows, each carrying `org`, `group`, and either
+ *   `sensor` or `link: true`.
+ */
 export function problems(f)
 {
   const out = [];
@@ -28,25 +35,46 @@ export function problems(f)
 $.component('alarm-bar', {
   state: { tick: 0 },
 
+  /** Re-renders on store changes and on each fleet frame. */
   mounted()
   {
     this._un = store.subscribe(() => this.setState({}));
     this._eff = $.effect(() => { currentFleet(); this.setState({}); });
   },
+  /** Tears down the store subscription and fleet effect. */
   destroyed()
   {
     if (this._un) this._un();
     if (typeof this._eff === 'function') this._eff();
   },
 
+  /** Closes the drawer by unwinding one history entry. */
   close() { back(); },
+  /**
+   * Closes the drawer when the scrim itself is clicked.
+   *
+   * @param {MouseEvent} e - the click event.
+   * @returns {void}
+   */
   onOverlay(e) { if (e.target.classList.contains('drawer-scrim')) back(); },
 
+  /**
+   * Opens the detail modal for the clicked alarm row's sensor.
+   *
+   * @param {MouseEvent} e - the click event.
+   * @returns {void}
+   */
   onGoSensor(e)
   {
     const el = e.target.closest('[data-sid]'); if (!el) return;
     open(() => store.dispatch('selectSensor', el.dataset.sid), () => store.dispatch('closeSensor'));
   },
+  /**
+   * Opens the group view for the clicked alarm row's group.
+   *
+   * @param {MouseEvent} e - the click event.
+   * @returns {void}
+   */
   onGoGroup(e)
   {
     const el = e.target.closest('[data-gid]'); if (!el) return;
@@ -54,6 +82,11 @@ $.component('alarm-bar', {
     open(() => store.dispatch('setGroupView', gid), () => store.dispatch('clearGroupView'));
   },
 
+  /**
+   * Renders the drawer with the current problem list, or an empty placeholder when closed.
+   *
+   * @returns {string} the drawer markup.
+   */
   render()
   {
     if (!store.state.alarms) return '<div hidden></div>';

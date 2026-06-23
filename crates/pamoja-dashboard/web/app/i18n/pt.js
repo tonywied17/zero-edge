@@ -136,6 +136,8 @@ export default
     'ui.sensorId': 'Sensor',
     'ui.manage': 'Gerir',
     'ui.done': 'Concluído',
+    'ui.dragHint': 'Arraste cartões e blocos para reordenar',
+    'ui.dragHintTouch': 'Toque e segure um cartão ou bloco e arraste para reordenar',
     'ui.addGroup': 'Adicionar grupo',
     'ui.addSensor': 'Adicionar sensor',
     'ui.newGroup': 'Novo grupo',

@@ -136,6 +136,8 @@ export default
     'ui.sensorId': 'सेंसर',
     'ui.manage': 'प्रबंधन',
     'ui.done': 'पूर्ण',
+    'ui.dragHint': 'पुनः क्रमित करने के लिए कार्ड और टाइलें खींचें',
+    'ui.dragHintTouch': 'कार्ड या टाइल को दबाकर रखें, फिर खींचकर पुनः क्रमित करें',
     'ui.addGroup': 'समूह जोड़ें',
     'ui.addSensor': 'सेंसर जोड़ें',
     'ui.newGroup': 'नया समूह',

@@ -1,0 +1,142 @@
+// edits.js - client-side group/sensor management (demo).
+//
+// The device owns the real fleet; this overlays user edits (added/removed groups and
+// sensors) on top of the live snapshot so the management UX exists without touching
+// device provisioning. Edits persist in localStorage via the store. A real build would
+// send these as authenticated provisioning commands; here they are applied in-browser.
+// The sensor types and link kinds a user can add come from the layout catalog (see
+// lib/catalog.js), so a device-supplied manifest changes what can be created.
+
+import { fleet } from './feed.js';
+import { store } from '../store.js';
+import { catalog } from './catalog.js';
+
+/**
+ * Generates a short, unique id with a caller-supplied prefix.
+ *
+ * @param {string} p - the id prefix, such as `"s"` or `"g"`.
+ * @returns {string} a unique identifier.
+ */
+export const uid = (p) => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+
+/**
+ * Classifies a value against its safe band into a health status.
+ *
+ * @param {number} value - the reading value.
+ * @param {[number, number]} [band] - the safe band `[low, high]`; a missing band is OK.
+ * @returns {string} one of `'ok'`, `'warn'`, or `'alarm'`.
+ */
+export function statusFor(value, band)
+{
+  if (!band) return 'ok';
+  const [lo, hi] = band, margin = (hi - lo) * 0.18;
+  if (value < lo - margin || value > hi + margin) return 'alarm';
+  if (value < lo || value > hi) return 'warn';
+  return 'ok';
+}
+
+/**
+ * Returns the more urgent of two statuses.
+ *
+ * @param {string} a - the first status.
+ * @param {string} b - the second status.
+ * @returns {string} the more urgent status.
+ */
+const worst = (a, b) => (['ok', 'warn', 'alarm'].indexOf(a) >= ['ok', 'warn', 'alarm'].indexOf(b) ? a : b);
+
+/**
+ * Sorts items by a saved order of ids; anything not in the order keeps its relative
+ * position after the ordered ones (stable), so new items append cleanly.
+ *
+ * @param {Array} items - the items to order.
+ * @param {string[]} [order] - the saved id order; a missing/empty order is a no-op.
+ * @param {(item: any) => string} idOf - reads an item's id.
+ * @returns {Array} the items in the saved order.
+ */
+function applyOrder(items, order, idOf)
+{
+  if (!order || !order.length) return items;
+  const idx = new Map(order.map((id, i) => [id, i]));
+  return items.slice().sort((a, b) => (idx.has(idOf(a)) ? idx.get(idOf(a)) : 1e9) - (idx.has(idOf(b)) ? idx.get(idOf(b)) : 1e9));
+}
+
+/**
+ * Builds a fresh custom sensor for a group (numeric, discrete-state, or chain log).
+ *
+ * @param {string} groupId - the id of the group the sensor belongs to.
+ * @param {string} presetId - the catalog preset id; falls back to the first preset.
+ * @param {number} [value] - an explicit numeric value; defaults to the band midpoint.
+ * @returns {object} the new sensor, in the snapshot shape.
+ */
+export function makeSensor(groupId, presetId, value)
+{
+  const p = catalog.sensorPresets.find((x) => x.id === presetId) || catalog.sensorPresets[0];
+  const base = { id: uid('s'), groupId, battery: null, mode: 'active', events: [], custom: true };
+  // A discrete sensor (valve, uplink) carries a state code instead of a numeric reading.
+  if (p.state)
+  {
+    return { ...base, reading: { key: p.key, value: p.value || 0, unit: p.unit || 'state', status: 'ok', state: p.state }, history: [] };
+  }
+  const v = Number.isFinite(value) ? value : (p.band ? (p.band[0] + p.band[1]) / 2 : (p.value ?? 0));
+  return {
+    ...base,
+    reading: { key: p.key, value: v, unit: p.unit, status: statusFor(v, p.band), band: p.band, trend: 'steady' },
+    history: Array.from({ length: 12 }, () => v),
+  };
+}
+
+/**
+ * Builds a fresh custom group for an org.
+ *
+ * @param {string} orgId - the id of the org the group belongs to.
+ * @param {string} name - the group's display name.
+ * @param {string} kind - the link kind, such as `'lora'`.
+ * @returns {object} the new group, in the snapshot shape.
+ */
+export function makeGroup(orgId, name, kind)
+{
+  return { id: uid('g'), orgId, name: name || 'New group', link: { kind: kind || 'lora', strength: 3, online: true }, status: 'ok', sensors: [], custom: true };
+}
+
+/**
+ * Applies the store's edits to a raw fleet snapshot, returning a new fleet.
+ *
+ * Removes and adds groups/sensors, applies the saved orderings, and recomputes group and
+ * fleet status, without mutating the input.
+ *
+ * @param {object} raw - the raw fleet snapshot from the device.
+ * @param {object} edits - the store's edit set (added/removed groups & sensors, orders).
+ * @returns {object} a new fleet with the edits applied, or `raw` if it is falsy.
+ */
+export function applyEdits(raw, edits)
+{
+  if (!raw) return raw;
+  const rmG = new Set(edits.rmGroups), rmS = new Set(edits.rmSensors);
+  const gOrder = edits.groupOrder || {}, sOrder = edits.sensorOrder || {};
+  let fleetStatus = 'ok';
+  const orgs = raw.orgs.map((o) =>
+  {
+    let groups = o.groups.filter((g) => !rmG.has(g.id)).map((g) => ({ ...g }));
+    groups = groups.concat(edits.addGroups.filter((ag) => ag.orgId === o.id));
+    groups = applyOrder(groups, gOrder[o.id], (g) => g.id);
+    groups = groups.map((g) =>
+    {
+      let sensors = (g.sensors || []).filter((s) => !rmS.has(g.id + '/' + s.id));
+      sensors = sensors.concat(edits.addSensors.filter((s) => s.groupId === g.id));
+      sensors = applyOrder(sensors, sOrder[g.id], (s) => s.id);
+      let st = g.link && g.link.online === false ? 'warn' : 'ok';
+      for (const s of sensors) st = worst(st, s.reading.status || 'ok');
+      fleetStatus = worst(fleetStatus, st);
+      return { ...g, sensors, status: st };
+    });
+    return { ...o, groups };
+  });
+  return { ...raw, orgs, status: fleetStatus };
+}
+
+/**
+ * The live fleet with the user's edits applied; recomputed on each read.
+ *
+ * @returns {object|null} the edited fleet, or `null` before the first frame.
+ */
+export const currentFleet = () => applyEdits(fleet.value, store.state.edits);

@@ -54,34 +54,69 @@ const EMBEDDED: &[Asset] = &[
         bytes: include_bytes!("../web/app/routes.js"),
     },
     Asset {
-        path: "/app/feed.js",
-        content_type: JS,
-        bytes: include_bytes!("../web/app/feed.js"),
-    },
-    Asset {
-        path: "/app/edits.js",
-        content_type: JS,
-        bytes: include_bytes!("../web/app/edits.js"),
-    },
-    Asset {
         path: "/app/nav.js",
         content_type: JS,
         bytes: include_bytes!("../web/app/nav.js"),
     },
     Asset {
-        path: "/app/detail.js",
+        path: "/app/lib/feed.js",
         content_type: JS,
-        bytes: include_bytes!("../web/app/detail.js"),
+        bytes: include_bytes!("../web/app/lib/feed.js"),
     },
     Asset {
-        path: "/app/i18n.js",
+        path: "/app/lib/edits.js",
         content_type: JS,
-        bytes: include_bytes!("../web/app/i18n.js"),
+        bytes: include_bytes!("../web/app/lib/edits.js"),
     },
     Asset {
-        path: "/app/viz.js",
+        path: "/app/lib/catalog.js",
         content_type: JS,
-        bytes: include_bytes!("../web/app/viz.js"),
+        bytes: include_bytes!("../web/app/lib/catalog.js"),
+    },
+    Asset {
+        path: "/app/lib/parallax.js",
+        content_type: JS,
+        bytes: include_bytes!("../web/app/lib/parallax.js"),
+    },
+    Asset {
+        path: "/app/lib/detail.js",
+        content_type: JS,
+        bytes: include_bytes!("../web/app/lib/detail.js"),
+    },
+    Asset {
+        path: "/app/lib/i18n.js",
+        content_type: JS,
+        bytes: include_bytes!("../web/app/lib/i18n.js"),
+    },
+    Asset {
+        path: "/app/lib/viz/index.js",
+        content_type: JS,
+        bytes: include_bytes!("../web/app/lib/viz/index.js"),
+    },
+    Asset {
+        path: "/app/lib/viz/util.js",
+        content_type: JS,
+        bytes: include_bytes!("../web/app/lib/viz/util.js"),
+    },
+    Asset {
+        path: "/app/lib/viz/links.js",
+        content_type: JS,
+        bytes: include_bytes!("../web/app/lib/viz/links.js"),
+    },
+    Asset {
+        path: "/app/lib/viz/charts.js",
+        content_type: JS,
+        bytes: include_bytes!("../web/app/lib/viz/charts.js"),
+    },
+    Asset {
+        path: "/app/lib/viz/gauges.js",
+        content_type: JS,
+        bytes: include_bytes!("../web/app/lib/viz/gauges.js"),
+    },
+    Asset {
+        path: "/app/lib/viz/glyphs.js",
+        content_type: JS,
+        bytes: include_bytes!("../web/app/lib/viz/glyphs.js"),
     },
     Asset {
         path: "/app/components/top-bar.js",
@@ -240,6 +275,15 @@ mod tests {
         assert!(Assets::Embedded.get("/zquery.min.js").is_some());
         assert!(Assets::Embedded.get("/app/app.js").is_some());
         assert!(Assets::Embedded.get("/global.css").is_some());
+    }
+
+    #[test]
+    fn embedded_serves_the_lib_modules() {
+        // The feature and helper modules live under app/lib (with the visualizations split
+        // into app/lib/viz), so the embedded bundle must resolve those nested paths.
+        assert!(Assets::Embedded.get("/app/lib/feed.js").is_some());
+        assert!(Assets::Embedded.get("/app/lib/catalog.js").is_some());
+        assert!(Assets::Embedded.get("/app/lib/viz/index.js").is_some());
     }
 
     #[test]

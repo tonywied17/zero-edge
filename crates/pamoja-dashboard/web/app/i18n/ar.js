@@ -137,6 +137,8 @@ export default
     'ui.sensorId': 'المستشعر',
     'ui.manage': 'إدارة',
     'ui.done': 'تم',
+    'ui.dragHint': 'اسحب البطاقات والمربعات لإعادة الترتيب',
+    'ui.dragHintTouch': 'المس مع الاستمرار بطاقة أو مربعًا ثم اسحب لإعادة الترتيب',
     'ui.addGroup': 'إضافة مجموعة',
     'ui.addSensor': 'إضافة مستشعر',
     'ui.newGroup': 'مجموعة جديدة',

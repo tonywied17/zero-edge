@@ -1,0 +1,95 @@
+// viz/index.js - the visualization barrel and dispatch.
+//
+// Picks the visualization that suits each reading and renders it, and re-exports the
+// helpers components reach for so the rest of the app imports visualizations from one
+// place. Every visualization is hand-drawn inline SVG or CSS: no images, no chart
+// library. The per-kind builders live alongside in gauges/glyphs/charts/links.
+
+import { nf, fmt, t } from '../i18n.js';
+import { esc, statusColor, trendArrow } from './util.js';
+import { LINK_NAMES, LINK_COLORS, LINK_RSSI, bars, conn } from './links.js';
+import { miniSpark, detailGraph, bannerRing, bigBars } from './charts.js';
+import { radial, therm, droplet, battery, dial, wind, sun, barViz } from './gauges.js';
+import { count, mesh, wave, chain, chip, valve } from './glyphs.js';
+
+/**
+ * Picks the visualization kind for a reading from its element key and unit.
+ *
+ * @param {string} key - the stable element key, such as `"soil_moisture"`.
+ * @param {string} unit - the canonical unit, such as `"celsius"` or `"percent"`.
+ * @returns {string} the visualization kind, such as `"therm"` or `"mesh"`.
+ */
+export function vizFor(key, unit)
+{
+  if (key === 'mesh_relay' || key === 'neighbour_mesh' || key === 'relay_mesh') return 'mesh';
+  if (key === 'tamper_log') return 'chain';
+  if (key === 'drip_valve') return 'valve';
+  if (unit === 'count') return 'count';
+  if (unit === 'state') return 'chip';
+  if (key === 'soil_trend' || key.endsWith('_trend')) return 'spark';
+  if (unit === 'celsius') return 'therm';
+  if (key === 'humidity' || key === 'soil_moisture' || unit === 'millimeter') return 'droplet';
+  if (key === 'well_level' || key === 'storage_tank' || key === 'ward_power' || key === 'oxygen_stock') return 'bar';
+  if (unit === 'hectopascal' || unit === 'liter_per_minute') return 'dial';
+  if (unit === 'meter_per_second') return 'wind';
+  if (unit === 'lux') return 'sun';
+  if (unit === 'decibel') return 'wave';
+  if (unit === 'volt' || key === 'battery_voltage' || key === 'battery_level') return 'battery';
+  if (unit === 'watt') return 'bar';
+  if (unit === 'percent') return 'radial';
+  return 'spark';
+}
+
+/**
+ * Reports whether a reading uses a discrete glyph rather than a numeric gauge.
+ *
+ * @param {{key: string, unit: string}} r - the reading.
+ * @returns {boolean} `true` for chip/valve/chain/mesh/count/wave visualizations.
+ */
+export function isDiscrete(r)
+{
+  const k = vizFor(r.key, r.unit);
+  return k === 'chip' || k === 'valve' || k === 'chain' || k === 'mesh' || k === 'count' || k === 'wave';
+}
+
+/**
+ * Renders the chosen visualization for a sensor, sized by `big`.
+ *
+ * @param {object} s - the sensor, carrying `reading`, `history`, and `id`.
+ * @param {boolean} [big=false] - whether to render the expanded view.
+ * @param {number} [nodes] - the mesh peer count, for the mesh visualization.
+ * @returns {string} the visualization markup, wrapped in its sizing container.
+ */
+export function tileViz(s, big = false, nodes)
+{
+  const r = s.reading;
+  const uid = (big ? 'b' : 't') + (s.id || r.key).replace(/[^a-z0-9]/gi, '');
+  const vk = vizFor(r.key, r.unit);
+  let inner, full = false, disc = false;
+  switch (vk)
+  {
+    case 'therm': inner = therm(r, big); break;
+    case 'droplet': inner = droplet(r, uid, big); break;
+    case 'radial': inner = radial(r, big); break;
+    case 'dial': inner = dial(r, big); break;
+    case 'wind': inner = wind(r, big); break;
+    case 'sun': inner = sun(r, big); break;
+    case 'battery': inner = battery(r, uid); break;
+    case 'chip': inner = chip(r, big); disc = true; break;
+    case 'valve': inner = valve(r, big); disc = true; break;
+    case 'chain': inner = chain(r, big); disc = true; break;
+    case 'wave': inner = wave(r, big); disc = true; break;
+    case 'mesh': inner = mesh(r, big, nodes); disc = true; break;
+    case 'count': inner = count(r, big); disc = true; break;
+    case 'bar': inner = barViz(r.value, r.band, big, t('unit.' + r.unit)); full = true; break;
+    default: inner = big ? bigBars(s.history, r.band) : miniSpark(s.history); full = true;
+  }
+  // Discrete glyphs (chip/valve) size to their own content rather than the fixed gauge slot.
+  const cls = disc ? `tv-wrap disc tv-${vk}` : `tv-wrap tv-${vk}${full ? ' full' : ''}${big ? ' big' : ''}`;
+  return `<div class="${cls}">${inner}</div>`;
+}
+
+export { nf, fmt };
+export { esc, statusColor, trendArrow };
+export { LINK_NAMES, LINK_COLORS, LINK_RSSI, bars, conn };
+export { detailGraph, bannerRing };

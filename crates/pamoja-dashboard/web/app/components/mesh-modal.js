@@ -7,34 +7,51 @@
 // The dashboard/group tile stays the static preview; this is the "show more" view.
 
 import { store } from '../store.js';
-import { currentFleet } from '../edits.js';
+import { currentFleet } from '../lib/edits.js';
 import { open, back } from '../nav.js';
-import { t, nf, fmt } from '../i18n.js';
-import { LINK_NAMES, LINK_COLORS, LINK_RSSI, isDiscrete, vizFor, esc } from '../viz.js';
+import { t, nf, fmt } from '../lib/i18n.js';
+import { catalog } from '../lib/catalog.js';
+import { LINK_NAMES, LINK_COLORS, LINK_RSSI, isDiscrete, vizFor, esc } from '../lib/viz/index.js';
 
 const W = 900, H = 560;
-const SPEED = { lora: '5 kbps', wifi: '24 Mbps', cellular: '1.4 Mbps', nbiot: '62 kbps', satellite: '128 kbps', ethernet: '100 Mbps', mesh: '42 kbps' };
-const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
+/**
+ * Finds a group and its owning org by group id.
+ *
+ * @param {object} f - the current fleet.
+ * @param {string} gid - the group id.
+ * @returns {{org: object, group: object}|null} the match, or null.
+ */
 function findGroup(f, gid)
 {
   for (const o of f.orgs) for (const g of o.groups) if (g.id === gid) return { org: o, group: g };
   return null;
 }
 
+/**
+ * Closes the mesh overlay one layer at a time: first a docked node, then the map.
+ *
+ * @returns {void}
+ */
 function closeMesh()
 {
   if (store.state.meshNode) { store.dispatch('clearMeshNode'); open(() => { }, closeMesh); return; }
   store.dispatch('closeMeshView');
 }
 
-/** Opens the mesh map overlay for a sensor id (gid/sid). */
+/**
+ * Opens the mesh map overlay for a sensor id (gid/sid).
+ *
+ * @param {string} sid - the `gid/sid` key of the mesh sensor.
+ * @returns {void}
+ */
 export function openMeshOverlay(sid)
 {
   open(() => store.dispatch('openMeshView', sid), closeMesh);
 }
 
 $.component('mesh-modal', {
+  /** Initializes pan/zoom state, subscriptions, and document pointer listeners. */
   mounted()
   {
     this._z = 1; this._px = 0; this._py = 0; this._drag = null;
@@ -45,7 +62,9 @@ $.component('mesh-modal', {
     document.addEventListener('pointermove', this._move);
     document.addEventListener('pointerup', this._up);
   },
+  /** Re-applies the pan/zoom transform after a re-render. */
   updated() { this.applyTransform(); },
+  /** Tears down subscriptions and document pointer listeners. */
   destroyed()
   {
     if (this._un) this._un();
@@ -54,22 +73,64 @@ $.component('mesh-modal', {
     document.removeEventListener('pointerup', this._up);
   },
 
+  /** Writes the current pan/zoom onto the scene group. */
   applyTransform() { const g = this._el && this._el.querySelector('.mm-scene'); if (g) g.setAttribute('transform', `translate(${this._px} ${this._py}) scale(${this._z})`); },
-  zoomIn() { this._z = clamp(this._z * 1.2, 0.5, 3); this.applyTransform(); },
-  zoomOut() { this._z = clamp(this._z / 1.2, 0.5, 3); this.applyTransform(); },
+  /** Zooms in one step. */
+  zoomIn() { this._z = $.clamp(this._z * 1.2, 0.5, 3); this.applyTransform(); },
+  /** Zooms out one step. */
+  zoomOut() { this._z = $.clamp(this._z / 1.2, 0.5, 3); this.applyTransform(); },
+  /** Resets pan and zoom to the default view. */
   resetView() { this._z = 1; this._px = 0; this._py = 0; this.applyTransform(); },
-  onWheel(e) { e.preventDefault(); this._z = clamp(this._z * (e.deltaY < 0 ? 1.12 : 0.89), 0.5, 3); this.applyTransform(); },
+  /**
+   * Zooms toward the wheel direction.
+   *
+   * @param {WheelEvent} e - the wheel event.
+   * @returns {void}
+   */
+  onWheel(e) { e.preventDefault(); this._z = $.clamp(this._z * (e.deltaY < 0 ? 1.12 : 0.89), 0.5, 3); this.applyTransform(); },
+  /**
+   * Begins a pan drag, unless the pointer landed on a node.
+   *
+   * @param {PointerEvent} e - the pointer-down event.
+   * @returns {void}
+   */
   onDown(e) { if (e.button !== 0) return; if (e.target.closest('[data-node]')) return; this._drag = { x: e.clientX, y: e.clientY, px: this._px, py: this._py }; },
+  /** Closes the overlay and unwinds one history entry. */
   close() { store.dispatch('closeMeshView'); back(); },
+  /**
+   * Closes the overlay when the scrim itself is clicked.
+   *
+   * @param {MouseEvent} e - the click event.
+   * @returns {void}
+   */
   onOverlay(e) { if (e.target.classList.contains('net-overlay')) this.close(); },
+  /**
+   * Docks the inspector for the clicked node.
+   *
+   * @param {MouseEvent} e - the click event.
+   * @returns {void}
+   */
   onNode(e) { const el = e.target.closest('[data-node]'); if (el) store.dispatch('setMeshNode', el.dataset.node); },
+  /** Closes the docked node inspector. */
   closeNode() { store.dispatch('clearMeshNode'); },
+  /**
+   * Opens the full detail modal for the inspected sensor.
+   *
+   * @param {MouseEvent} e - the click event.
+   * @returns {void}
+   */
   viewSensor(e)
   {
     const el = e.target.closest('[data-sid]'); if (!el) return;
     open(() => store.dispatch('selectSensor', el.dataset.sid), () => store.dispatch('closeSensor'));
   },
 
+  /**
+   * Builds the node positions, links, and packet paths for a group's mesh.
+   *
+   * @param {object} group - the group to lay out.
+   * @returns {{nodes: Array, links: Array, packets: Array, pos: object}} the topology.
+   */
   topology(group)
   {
     const cx = W * 0.5, cy = H * 0.54;
@@ -99,21 +160,29 @@ $.component('mesh-modal', {
     return { nodes, links, packets, pos };
   },
 
+  /**
+   * Renders the docked inspector for a selected node (gateway, hub, or sensor).
+   *
+   * @param {object} group - the group being inspected.
+   * @param {object} [node] - the selected node; an empty node renders nothing.
+   * @returns {string} the inspector markup.
+   */
   inspector(group, node)
   {
     if (!node) return '';
     const dbm = (LINK_RSSI[group.link.kind] ?? -90) + (group.link.strength - 2) * 6;
+    const speed = catalog.linkSpec[group.link.kind]?.speed || '-';
     const row = (k, v) => `<div class="ins-row"><span>${k}</span><b>${v}</b></div>`;
     let title, sub, body, foot = '';
     if (node.role === 'gateway')
     {
       title = t('ui.gateway'); sub = LINK_NAMES[group.link.kind] || group.link.kind;
-      body = row(t('ui.link'), t('ui.online')) + row(t('ui.throughput'), SPEED[group.link.kind] || '-') + row(t('ui.latency'), '12 ms');
+      body = row(t('ui.link'), t('ui.online')) + row(t('ui.throughput'), speed) + row(t('ui.latency'), '12 ms');
     } else if (node.role === 'hub')
     {
       title = group.name; sub = `${LINK_NAMES[group.link.kind] || group.link.kind} · ${t('status.' + group.status)}`;
       const sCount = group.sensors.filter((s) => vizFor(s.reading.key, s.reading.unit) !== 'mesh').length;
-      body = row(t('ui.signal'), `${dbm} dBm`) + row(t('ui.throughput'), SPEED[group.link.kind] || '-') + row(t('ui.sensors'), nf(sCount));
+      body = row(t('ui.signal'), `${dbm} dBm`) + row(t('ui.throughput'), speed) + row(t('ui.sensors'), nf(sCount));
     } else
     {
       const r = node.sensor.reading;
@@ -130,6 +199,11 @@ $.component('mesh-modal', {
       </div>`;
   },
 
+  /**
+   * Renders the mesh overlay for the active mesh sensor's group.
+   *
+   * @returns {string} the overlay markup, or an empty placeholder when inactive.
+   */
   render()
   {
     const id = store.state.meshView;

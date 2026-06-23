@@ -136,6 +136,8 @@ export default
     'ui.sensorId': 'Kitambuzi',
     'ui.manage': 'Dhibiti',
     'ui.done': 'Imekamilika',
+    'ui.dragHint': 'Buruta kadi na vigae kupanga upya',
+    'ui.dragHintTouch': 'Gusa na ushikilie kadi au kigae, kisha buruta kupanga upya',
     'ui.addGroup': 'Ongeza kundi',
     'ui.addSensor': 'Ongeza kitambuzi',
     'ui.newGroup': 'Kundi jipya',

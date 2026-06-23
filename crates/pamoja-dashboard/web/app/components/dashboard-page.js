@@ -8,20 +8,33 @@
 
 import { store } from '../store.js';
 import { open } from '../nav.js';
-import { t, nf, fmt } from '../i18n.js';
-import { currentFleet } from '../edits.js';
-import { conn, tileViz, bannerRing, trendArrow, isDiscrete, vizFor, esc } from '../viz.js';
+import { t, nf, fmt } from '../lib/i18n.js';
+import { currentFleet } from '../lib/edits.js';
+import { conn, tileViz, bannerRing, trendArrow, isDiscrete, vizFor, esc } from '../lib/viz/index.js';
 import { openMeshOverlay } from './mesh-modal.js';
 
 const ICON_EDIT = '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19.5l-4 1 1-4z"/></svg>';
 const ICON_DONE = '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
+const ICON_EXPAND = '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>';
+const ICON_DRAG = '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9 2 12l3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20"/></svg>';
 
+/**
+ * Counts the non-mesh sensors in a group, the peer count the mesh preview draws.
+ *
+ * @param {object} g - the group.
+ * @returns {number} the count of non-mesh sensors.
+ */
 function meshPeerCount(g)
 {
   return g.sensors.filter((x) => vizFor(x.reading.key, x.reading.unit) !== 'mesh').length;
 }
 
-/** Worst sensor status across an org, so its dot can carry the org's health. */
+/**
+ * Computes the worst sensor status across an org, so its dot can carry the org's health.
+ *
+ * @param {object} o - the org.
+ * @returns {string} the worst status, one of `'ok'`, `'warn'`, or `'alarm'`.
+ */
 function orgStatus(o)
 {
   let worst = 'ok';
@@ -33,6 +46,12 @@ function orgStatus(o)
   return worst;
 }
 
+/**
+ * Reports whether a `gid/sid` key refers to a mesh-map sensor in the current fleet.
+ *
+ * @param {string} sid - the `gid/sid` key.
+ * @returns {boolean} `true` if the sensor uses the mesh visualization.
+ */
 function isMeshSensor(sid)
 {
   const f = currentFleet();
@@ -49,6 +68,7 @@ function isMeshSensor(sid)
 $.component('dashboard-page', {
   state: { tick: 0, orgOpen: false },
 
+  /** Subscribes to fleet/store changes, observes layout, and wires drag reordering. */
   mounted()
   {
     this._place = {};
@@ -59,6 +79,7 @@ $.component('dashboard-page', {
     window.addEventListener('resize', this._onResize);
     this.bindDrag();
   },
+  /** Re-observes the grid and cards after each re-render so layout stays current. */
   updated()
   {
     const grid = this._el && this._el.querySelector('.groups');
@@ -66,6 +87,7 @@ $.component('dashboard-page', {
     if (!grid._obs) { grid._obs = true; this._ro.observe(grid); }
     grid.querySelectorAll('.gcard').forEach((c) => { if (!c._obs) { c._obs = true; this._ro.observe(c); } });
   },
+  /** Tears down subscriptions, the resize observer, and any pending layout frame. */
   destroyed()
   {
     if (typeof this._stop === 'function') this._stop();
@@ -75,9 +97,16 @@ $.component('dashboard-page', {
     if (this._raf) cancelAnimationFrame(this._raf);
   },
 
+  /** Schedules a masonry relayout on the next animation frame, coalescing bursts. */
   scheduleLayout() { if (!this._raf) this._raf = requestAnimationFrame(() => this.layout()); },
 
-  /** Masonry: place each card at column i%cols, stacked at that column's running bottom (row-major, no gaps). Placement is cached so render() re-emits it inline, since the morph strips JS-set styles. One column drops to natural stacking (see .groups.mono). */
+  /**
+   * Masonry: place each card at column i%cols, stacked at that column's running bottom
+   * (row-major, no gaps). Placement is cached so render() re-emits it inline, since the
+   * morph strips JS-set styles. One column drops to natural stacking (see .groups.mono).
+   *
+   * @returns {void}
+   */
   layout()
   {
     this._raf = 0;
@@ -113,6 +142,7 @@ $.component('dashboard-page', {
     });
   },
 
+  /** Binds drag-and-drop reordering for group cards and sensor tiles on the root. */
   bindDrag()
   {
     const root = this._el;
@@ -141,6 +171,7 @@ $.component('dashboard-page', {
     root.addEventListener('dragend', () => this.endDrag());
   },
 
+  /** Commits a finished drag: persists the new group or sensor order and relays out. */
   endDrag()
   {
     if (!this._drag) return;
@@ -166,6 +197,12 @@ $.component('dashboard-page', {
     this.scheduleLayout();
   },
 
+  /**
+   * Opens a sensor's detail (or the mesh overlay for a mesh sensor) from a tile click.
+   *
+   * @param {MouseEvent} e - the click event.
+   * @returns {void}
+   */
   onSensor(e)
   {
     if (e.target.closest('.tile-rm')) return;
@@ -174,12 +211,48 @@ $.component('dashboard-page', {
     if (isMeshSensor(sid)) { openMeshOverlay(sid); return; }
     open(() => store.dispatch('selectSensor', sid), () => store.dispatch('closeSensor'));
   },
+  /**
+   * Removes a sensor in Manage mode.
+   *
+   * @param {MouseEvent} e - the click event.
+   * @returns {void}
+   */
   onRemoveSensor(e) { e.stopPropagation(); const el = e.target.closest('[data-key]'); if (el) store.dispatch('removeSensor', el.dataset.key); },
+  /**
+   * Removes a group in Manage mode.
+   *
+   * @param {MouseEvent} e - the click event.
+   * @returns {void}
+   */
   onRemoveGroup(e) { const el = e.target.closest('[data-gid]'); if (el) store.dispatch('removeGroup', el.dataset.gid); },
+  /**
+   * Opens the group view for the clicked group's expand button.
+   *
+   * @param {MouseEvent} e - the click event.
+   * @returns {void}
+   */
   onOpenGroup(e) { const el = e.target.closest('[data-gid]'); if (el) { const gid = el.dataset.gid; open(() => store.dispatch('setGroupView', gid), () => store.dispatch('clearGroupView')); } },
+  /**
+   * Opens the add-sensor dialog for the clicked group.
+   *
+   * @param {MouseEvent} e - the click event.
+   * @returns {void}
+   */
   onAddSensor(e) { const el = e.target.closest('[data-gid]'); if (el) { const gid = el.dataset.gid; open(() => store.dispatch('openCreate', { mode: 'sensor', groupId: gid }), () => store.dispatch('closeCreate')); } },
+  /**
+   * Opens the add-group dialog for the clicked org.
+   *
+   * @param {MouseEvent} e - the click event.
+   * @returns {void}
+   */
   onAddGroup(e) { const el = e.target.closest('[data-oid]'); if (el) { const oid = el.dataset.oid; open(() => store.dispatch('openCreate', { mode: 'group', orgId: oid }), () => store.dispatch('closeCreate')); } },
 
+  /**
+   * Resolves the org addressed by the route, defaulting to the first org.
+   *
+   * @param {object} f - the current fleet.
+   * @returns {object|null} the selected org, or null when there are none.
+   */
   selectedOrg(f)
   {
     const orgs = f.orgs || [];
@@ -187,6 +260,11 @@ $.component('dashboard-page', {
     return orgs.find((o) => o.id === id) || orgs[0] || null;
   },
 
+  /**
+   * Renders the dashboard shell: banner, org tabs, and the selected org's groups.
+   *
+   * @returns {string} the page markup.
+   */
   render()
   {
     const f = currentFleet();
@@ -197,6 +275,12 @@ $.component('dashboard-page', {
     return `<div class="shell">${this.banner(f)}${this.orgtabs(f)}${this.groups(f)}</div>`;
   },
 
+  /**
+   * Renders the status banner with fleet-wide counts.
+   *
+   * @param {object} f - the current fleet.
+   * @returns {string} the banner markup.
+   */
   banner(f)
   {
     let groups = 0, sensors = 0, alarms = 0, warns = 0;
@@ -221,6 +305,12 @@ $.component('dashboard-page', {
       </section>`;
   },
 
+  /**
+   * Renders the org selector dropdown and the Manage toggle.
+   *
+   * @param {object} f - the current fleet.
+   * @returns {string} the org-bar markup.
+   */
   orgtabs(f)
   {
     const sel = this.selectedOrg(f) || f.orgs[0];
@@ -241,10 +331,20 @@ $.component('dashboard-page', {
     </div>`;
   },
 
+  /** Toggles the org selector dropdown. */
   toggleOrg() { this.setState({ orgOpen: !this.state.orgOpen }); },
+  /** Closes the org selector dropdown. */
   closeOrg() { if (this.state.orgOpen) this.setState({ orgOpen: false }); },
+  /** Toggles Manage mode. */
   onManage() { store.dispatch('toggleEditing'); },
 
+  /**
+   * Renders the masonry grid of group cards for the selected org, plus an add card in
+   * Manage mode.
+   *
+   * @param {object} f - the current fleet.
+   * @returns {string} the groups-grid markup.
+   */
   groups(f)
   {
     const org = this.selectedOrg(f);
@@ -253,9 +353,18 @@ $.component('dashboard-page', {
     const ap = (this._place || {}).__add;
     const astyle = ap ? `grid-column:${ap.c};grid-row:${ap.r} / span ${ap.s}` : 'grid-row:auto / span 170';
     const add = editing ? `<button class="gcard add-card" data-oid="${org.id}" z-key="__add" @click="onAddGroup" style="${astyle}"><span class="add-plus">+</span> ${t('ui.addGroup')}</button>` : '';
-    return `<div class="groups${this._mono ? ' mono' : ''}">${org.groups.map((g) => this.groupCard(g, editing)).join('')}${add}</div>`;
+    const touch = typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches;
+    const hint = editing ? `<div class="manage-hint">${ICON_DRAG}<span>${esc(t(touch ? 'ui.dragHintTouch' : 'ui.dragHint'))}</span></div>` : '';
+    return `${hint}<div class="groups${this._mono ? ' mono' : ''}">${org.groups.map((g) => this.groupCard(g, editing)).join('')}${add}</div>`;
   },
 
+  /**
+   * Renders one group card with its header, sensor tiles, and footer.
+   *
+   * @param {object} g - the group.
+   * @param {boolean} editing - whether Manage mode is active.
+   * @returns {string} the group-card markup.
+   */
   groupCard(g, editing)
   {
     const rm = editing ? `<button class="icon-btn danger" data-gid="${g.id}" @click="onRemoveGroup" aria-label="${esc(t('ui.remove'))}">✕</button>` : '';
@@ -277,11 +386,19 @@ $.component('dashboard-page', {
           ${addS}
         </div>
         <div class="gfoot">
-          <button class="gexpand" type="button" data-gid="${g.id}" @click="onOpenGroup" aria-label="${esc(t('ui.group'))}" title="${esc(t('ui.group'))}">⤢</button>
+          <button class="gexpand" type="button" data-gid="${g.id}" @click="onOpenGroup" aria-label="${esc(t('ui.group'))}" title="${esc(t('ui.group'))}">${ICON_EXPAND}</button>
         </div>
       </article>`;
   },
 
+  /**
+   * Renders one sensor tile with its label, optional readout, and visualization.
+   *
+   * @param {object} g - the group the sensor belongs to.
+   * @param {object} s - the sensor.
+   * @param {boolean} editing - whether Manage mode is active.
+   * @returns {string} the sensor-tile markup.
+   */
   sensorTile(g, s, editing)
   {
     const r = s.reading;

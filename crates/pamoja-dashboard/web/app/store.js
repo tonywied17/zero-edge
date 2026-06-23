@@ -5,7 +5,20 @@
 // a demo of management that persists in localStorage). The live fleet data is not kept
 // here - it streams through feed.js as a signal - so this store stays focused on UI.
 
+/**
+ * Reads a persisted preference from localStorage, with a default.
+ *
+ * @param {string} k - the storage key.
+ * @param {*} d - the value to return when the key is absent.
+ * @returns {*} the stored value, or `d`.
+ */
 const get = (k, d) => { const v = $.storage.get(k); return v == null ? d : v; };
+
+/**
+ * Builds an empty edit set (no added/removed groups or sensors, no orderings).
+ *
+ * @returns {object} a fresh, empty edit set.
+ */
 const blankEdits = () => ({ addGroups: [], addSensors: [], rmGroups: [], rmSensors: [], groupOrder: {}, sensorOrder: {} });
 
 export const store = $.store('app', {

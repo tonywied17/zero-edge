@@ -6,24 +6,39 @@
 // nav so history stays balanced. The body is the shared sensor detail.
 
 import { store } from '../store.js';
-import { currentFleet } from '../edits.js';
+import { currentFleet } from '../lib/edits.js';
 import { back } from '../nav.js';
-import { sensorDetailBody, stickLog } from '../detail.js';
-import { t } from '../i18n.js';
-import { conn, esc } from '../viz.js';
+import { sensorDetailBody, stickLog } from '../lib/detail.js';
+import { t } from '../lib/i18n.js';
+import { conn, esc } from '../lib/viz/index.js';
 
 $.component('sensor-modal', {
+  /** Re-renders on store changes and on each fleet frame. */
   mounted()
   {
     this._un = store.subscribe(() => this.setState({}));
     this._eff = $.effect(() => { currentFleet(); this.setState({}); });
   },
+  /** Tears down the store subscription and fleet effect. */
   destroyed() { if (this._un) this._un(); if (typeof this._eff === 'function') this._eff(); },
+  /** Keeps the event log pinned to its newest line after a re-render. */
   updated() { stickLog(this._el); },
 
+  /** Closes the modal by unwinding one history entry. */
   close() { back(); },
+  /**
+   * Closes the modal when the backdrop itself is clicked.
+   *
+   * @param {MouseEvent} e - the click event.
+   * @returns {void}
+   */
   onOverlay(e) { if (e.target.classList.contains('modal-overlay')) back(); },
 
+  /**
+   * Resolves the selected sensor and its org/group from the current fleet.
+   *
+   * @returns {{org: object, group: object, sensor: object}|null} the selection, or null.
+   */
   find()
   {
     const sel = store.state.selected; const f = currentFleet();
@@ -33,6 +48,11 @@ $.component('sensor-modal', {
     return null;
   },
 
+  /**
+   * Renders the modal for the selected sensor, or an empty placeholder when none.
+   *
+   * @returns {string} the modal markup.
+   */
   render()
   {
     const found = this.find();

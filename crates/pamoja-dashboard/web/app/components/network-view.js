@@ -7,36 +7,24 @@
 //   - Map: the same fleet placed by (mocked) geo coordinates over a graticule.
 // Both pan and zoom. Clicking a group node opens an inspection panel with link debug
 // (signal, throughput, latency, uptime, issues); clicking a sensor leaf opens its
-// detail modal. Built from currentFleet(), so edits and scenarios are reflected.
+// detail modal. Built from currentFleet(), so edits and scenarios are reflected. The
+// site map and per-link debug specs come from the layout catalog (see lib/catalog.js).
 
 import { store } from '../store.js';
-import { currentFleet } from '../edits.js';
+import { currentFleet } from '../lib/edits.js';
 import { open, back } from '../nav.js';
-import { sensorDetailBody, stickLog } from '../detail.js';
-import { t, nf } from '../i18n.js';
-import { LINK_NAMES, LINK_COLORS, esc } from '../viz.js';
+import { sensorDetailBody, stickLog } from '../lib/detail.js';
+import { t, nf } from '../lib/i18n.js';
+import { catalog } from '../lib/catalog.js';
+import { LINK_NAMES, LINK_COLORS, esc } from '../lib/viz/index.js';
 
 const W = 1040, H = 660, SR = 60;
 
-// Mocked site positions (normalized 0..1) across one rural area, spread so nodes and
-// labels never collide. A real build would use Group.location GPS over a tile basemap.
-const MAP_POS = {
-  __gateway: [0.47, 0.45],
-  'cold-chain': [0.29, 0.15], maternity: [0.17, 0.27],
-  'silo-3': [0.72, 0.20], weather: [0.88, 0.36],
-  solar: [0.66, 0.78], river: [0.36, 0.69],
-};
-
-// Nominal link characteristics for the inspection panel.
-const LINK_SPEC = {
-  lora: { speed: '5 kbps', lat: 780, rssi: -112 }, wifi: { speed: '24 Mbps', lat: 11, rssi: -52 },
-  cellular: { speed: '1.4 Mbps', lat: 58, rssi: -84 }, nbiot: { speed: '62 kbps', lat: 240, rssi: -102 },
-  satellite: { speed: '128 kbps', lat: 640, rssi: -118 },
-  ethernet: { speed: '100 Mbps', lat: 3, rssi: -40 }, mesh: { speed: '42 kbps', lat: 130, rssi: -96 },
-};
-
-const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-
+/**
+ * Closes the network overlay one layer at a time: sensor panel, then inspect, then map.
+ *
+ * @returns {void}
+ */
 function closeNet()
 {
   const st = store.state;
@@ -45,7 +33,11 @@ function closeNet()
   store.dispatch('closeNetwork');
 }
 
-/** Opens the network overlay as a single substate (see closeNet for the unwind logic). */
+/**
+ * Opens the network overlay as a single substate (see closeNet for the unwind logic).
+ *
+ * @returns {void}
+ */
 export function openNetworkOverlay()
 {
   open(() => store.dispatch('openNetwork'), closeNet);
@@ -54,6 +46,7 @@ export function openNetworkOverlay()
 $.component('network-view', {
   state: { tab: 'topology', tick: 0 },
 
+  /** Initializes pan/zoom state, subscriptions, and document pointer listeners. */
   mounted()
   {
     this._z = 1; this._px = 0; this._py = 0; this._drag = null;
@@ -64,7 +57,9 @@ $.component('network-view', {
     document.addEventListener('pointermove', this._move);
     document.addEventListener('pointerup', this._up);
   },
+  /** Re-applies the pan/zoom transform and re-pins the event log after a re-render. */
   updated() { this.applyTransform(); stickLog(this._el); },
+  /** Tears down subscriptions and document pointer listeners. */
   destroyed()
   {
     if (this._un) this._un();
@@ -73,32 +68,88 @@ $.component('network-view', {
     document.removeEventListener('pointerup', this._up);
   },
 
+  /** Writes the current pan/zoom onto the scene group. */
   applyTransform() { const g = this._el && this._el.querySelector('.net-scene'); if (g) g.setAttribute('transform', `translate(${this._px} ${this._py}) scale(${this._z})`); },
-  zoomIn() { this._z = clamp(this._z * 1.2, 0.5, 3); this.applyTransform(); },
-  zoomOut() { this._z = clamp(this._z / 1.2, 0.5, 3); this.applyTransform(); },
+  /** Zooms in one step. */
+  zoomIn() { this._z = $.clamp(this._z * 1.2, 0.5, 3); this.applyTransform(); },
+  /** Zooms out one step. */
+  zoomOut() { this._z = $.clamp(this._z / 1.2, 0.5, 3); this.applyTransform(); },
+  /** Resets pan and zoom to the default view. */
   resetView() { this._z = 1; this._px = 0; this._py = 0; this.applyTransform(); },
-  onWheel(e) { e.preventDefault(); this._z = clamp(this._z * (e.deltaY < 0 ? 1.12 : 0.89), 0.5, 3); this.applyTransform(); },
+  /**
+   * Zooms toward the wheel direction.
+   *
+   * @param {WheelEvent} e - the wheel event.
+   * @returns {void}
+   */
+  onWheel(e) { e.preventDefault(); this._z = $.clamp(this._z * (e.deltaY < 0 ? 1.12 : 0.89), 0.5, 3); this.applyTransform(); },
+  /**
+   * Begins a pan drag, unless the pointer landed on a node or leaf.
+   *
+   * @param {PointerEvent} e - the pointer-down event.
+   * @returns {void}
+   */
   onDown(e) { if (e.button !== 0) return; if (e.target.closest('[data-sid]') || e.target.closest('[data-gid]')) return; this._drag = { x: e.clientX, y: e.clientY, px: this._px, py: this._py }; },
 
+  /** Closes the overlay and unwinds one history entry. */
   close() { store.dispatch('closeNetwork'); back(); },
+  /**
+   * Closes the overlay when the scrim itself is clicked.
+   *
+   * @param {MouseEvent} e - the click event.
+   * @returns {void}
+   */
   onOverlay(e) { if (e.target.classList.contains('net-overlay')) this.close(); },
+  /**
+   * Switches between the topology and map tabs, resetting the view.
+   *
+   * @param {string} tab - the tab to show, `'topology'` or `'map'`.
+   * @returns {void}
+   */
   setTab(tab) { this.state.tab = tab; this.resetView(); },
 
+  /**
+   * Docks the sensor panel for the clicked leaf.
+   *
+   * @param {MouseEvent} e - the click event.
+   * @returns {void}
+   */
   onLeaf(e) { const el = e.target.closest('[data-sid]'); if (el) store.dispatch('setNetSensor', el.dataset.sid); },
+  /**
+   * Docks the inspect panel for the clicked group node.
+   *
+   * @param {MouseEvent} e - the click event.
+   * @returns {void}
+   */
   onNode(e) { const el = e.target.closest('[data-gid]'); if (el) store.dispatch('setNetInspect', el.dataset.gid); },
+  /** Closes the docked inspect panel. */
   closeInspect() { store.dispatch('clearNetInspect'); },
+  /** Closes the docked sensor panel. */
   closeSensorPanel() { store.dispatch('clearNetSensor'); },
 
+  /**
+   * Flattens the fleet into a flat list of every group.
+   *
+   * @param {object} f - the current fleet.
+   * @returns {object[]} every group across all orgs.
+   */
   groupsOf(f) { const out = []; for (const o of f.orgs) for (const g of o.groups) out.push(g); return out; },
 
+  /**
+   * Computes hub and group node positions for the current tab.
+   *
+   * @param {object[]} groups - the groups to place.
+   * @param {boolean} map - whether to place by geo coordinates (map) or a ring (topology).
+   * @returns {{hub: object, gpos: Array}} the hub and per-group placements.
+   */
   positions(groups, map)
   {
     if (map)
     {
       const ax = 100, ay = 70, aw = W - 200, ah = H - 170;
-      const at = (id) => MAP_POS[id] || [0.5, 0.5];
+      const at = (id) => catalog.sitePositions[id] || [0.5, 0.5];
       const gpos = groups.map((g) => { const [nx, ny] = at(g.id); return { g, x: ax + nx * aw, y: ay + ny * ah, ang: 0 }; });
-      const [hx, hy] = MAP_POS.__gateway;
+      const [hx, hy] = catalog.sitePositions.__gateway;
       const hub = { x: ax + hx * aw, y: ay + hy * ah };
       gpos.forEach((p) => { p.ang = Math.atan2(p.y - hub.y, p.x - hub.x); });
       return { hub, gpos };
@@ -108,6 +159,13 @@ $.component('network-view', {
     return { hub, gpos };
   },
 
+  /**
+   * Builds the topology/map scene: the hub, edges, packets, group nodes, and leaves.
+   *
+   * @param {object} f - the current fleet.
+   * @param {boolean} map - whether to render the geo map tab.
+   * @returns {string} the scene SVG group markup.
+   */
   scene(f, map)
   {
     const groups = this.groupsOf(f);
@@ -151,14 +209,18 @@ $.component('network-view', {
       <text x="${hub.x.toFixed(1)}" y="${(hub.y + 44).toFixed(1)}" text-anchor="middle" class="net-label">${t('ui.gateway')}</text></g>`;
   },
 
-  // A stylized rural site backdrop for the map tab: contour rings, fields, a river and
-  // a track, plus place labels. Purely decorative; it pans and zooms with the scene.
+  /**
+   * Renders the decorative rural site backdrop for the map tab (contours, water, fields,
+   * roads, place labels). It pans and zooms with the scene.
+   *
+   * @returns {string} the backdrop SVG group markup.
+   */
   mapBackdrop()
   {
     const ax = 100, ay = 70, aw = W - 200, ah = H - 170;
     const P = (nx, ny) => [+(ax + nx * aw).toFixed(1), +(ay + ny * ah).toFixed(1)];
-    const hub = P(...MAP_POS.__gateway);
-    const town = P(0.23, 0.21), farms = P(0.80, 0.28), sol = P(...MAP_POS.solar), riv = P(...MAP_POS.river);
+    const hub = P(...catalog.sitePositions.__gateway);
+    const town = P(0.23, 0.21), farms = P(0.80, 0.28), sol = P(...catalog.sitePositions.solar), riv = P(...catalog.sitePositions.river);
     const road = (a, b) => `<path class="net-road" d="M${a[0]} ${a[1]} Q${(a[0] + b[0]) / 2 + 20} ${(a[1] + b[1]) / 2 - 20} ${b[0]} ${b[1]}"/>`;
 
     let grid = '';
@@ -187,6 +249,13 @@ $.component('network-view', {
     return `<g class="net-bg">${grid}${water}${river}${forest}${fields}${contours}${roads}${compass}${scale}${places}</g>`;
   },
 
+  /**
+   * Resolves a sensor and its org/group by its `gid/sid` key.
+   *
+   * @param {object} f - the current fleet.
+   * @param {string} sid - the `gid/sid` key.
+   * @returns {{org: object, group: object, sensor: object}|null} the match, or null.
+   */
   findSensor(f, sid)
   {
     if (!sid) return null;
@@ -195,6 +264,12 @@ $.component('network-view', {
     return null;
   },
 
+  /**
+   * Renders the docked sensor panel for the selected leaf.
+   *
+   * @param {object} f - the current fleet.
+   * @returns {string} the panel markup, or an empty string when none is selected.
+   */
   sensorPanel(f)
   {
     const found = this.findSensor(f, store.state.netSensor); if (!found) return '';
@@ -207,11 +282,17 @@ $.component('network-view', {
       </div>`;
   },
 
+  /**
+   * Renders the docked inspect panel for the selected group node (link debug + issues).
+   *
+   * @param {object} f - the current fleet.
+   * @returns {string} the panel markup, or an empty string when none is selected.
+   */
   inspectPanel(f)
   {
     const id = store.state.netInspect; if (!id) return '';
     const g = this.groupsOf(f).find((x) => x.id === id); if (!g) return '';
-    const spec = LINK_SPEC[g.link.kind] || LINK_SPEC.lora;
+    const spec = catalog.linkSpec[g.link.kind] || catalog.linkSpec.lora;
     const rssi = spec.rssi + (g.link.strength - 2) * 6;
     const issues = g.sensors.filter((s) => s.reading.status !== 'ok');
     const pkts = Math.round(4 + g.sensors.length * 1.5);
@@ -235,6 +316,12 @@ $.component('network-view', {
       </div>`;
   },
 
+  /**
+   * Opens the group view for the clicked node.
+   *
+   * @param {MouseEvent} e - the click event.
+   * @returns {void}
+   */
   onOpenGroup(e)
   {
     const el = e.target.closest('[data-gid]'); if (!el) return;
@@ -242,6 +329,11 @@ $.component('network-view', {
     open(() => store.dispatch('setGroupView', gid), () => store.dispatch('clearGroupView'));
   },
 
+  /**
+   * Renders the network overlay with its tabs, scene, zoom controls, panels, and legend.
+   *
+   * @returns {string} the overlay markup, or an empty placeholder when closed.
+   */
   render()
   {
     if (!store.state.network) return '<div hidden></div>';

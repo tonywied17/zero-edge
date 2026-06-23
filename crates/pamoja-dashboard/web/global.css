@@ -17,6 +17,7 @@
   --r-sm: 10px;
   --tap: 44px;
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --gap-section: clamp(1rem, 2.6vw, 1.5rem);
 }
 
 [data-theme="night"]
@@ -123,7 +124,7 @@ h1, h2, h3 { margin: 0; font-family: var(--display); font-weight: 600; letter-sp
 .shell { max-inline-size: min(1800px, 95vw); margin-inline: auto; padding: clamp(1rem, 3vw, 2rem) clamp(0.9rem, 2.5vw, 2.4rem) 5rem; }
 
 .topbar { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; max-inline-size: min(1800px, 95vw); margin-inline: auto; padding: clamp(0.9rem, 2.5vw, 1.4rem) clamp(0.9rem, 2.5vw, 2.4rem) 0; }
-.outlet .shell { padding-block-start: clamp(0.6rem, 2vw, 1rem); }
+.outlet .shell { padding-block-start: var(--gap-section); }
 .brand { display: flex; align-items: center; gap: 0.7rem; }
 .brand-mark
 {
@@ -237,7 +238,7 @@ h1, h2, h3 { margin: 0; font-family: var(--display); font-weight: 600; letter-sp
   position: relative; display: grid; grid-template-columns: auto 1fr auto; gap: clamp(1rem, 3vw, 2rem);
   align-items: center; padding: clamp(1.1rem, 3vw, 1.7rem) clamp(1.2rem, 3vw, 2rem);
   border-radius: var(--r-lg); border: 1px solid var(--line-2); background: var(--panel);
-  box-shadow: var(--shadow), inset 0 1px 0 var(--hi); overflow: hidden; margin-block-end: clamp(1.1rem, 3vw, 1.6rem);
+  box-shadow: var(--shadow), inset 0 1px 0 var(--hi); overflow: hidden; margin-block-end: var(--gap-section);
 }
 .banner[data-status="ok"] { --accent: var(--ok); }
 .banner[data-status="warn"] { --accent: var(--warn); }
@@ -257,7 +258,7 @@ h1, h2, h3 { margin: 0; font-family: var(--display); font-weight: 600; letter-sp
 @media (max-width: 620px) { .banner { grid-template-columns: auto 1fr; } .banner-stats { grid-column: 1/-1; justify-content: space-between; text-align: start; } }
 
 /* ---------- Org tabs ---------- */
-.orgbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-block-end: 1.1rem; }
+.orgbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-block-end: var(--gap-section); }
 .orgsel { position: relative; }
 .orgsel-btn
 {
@@ -295,6 +296,9 @@ h1, h2, h3 { margin: 0; font-family: var(--display); font-weight: 600; letter-sp
 /* Single-column (phones): drop the masonry packing and let cards stack at natural height. */
 .groups.mono { grid-template-columns: 1fr; grid-auto-rows: auto; row-gap: clamp(0.9rem, 2vw, 1.3rem); }
 .groups.mono .gcard { grid-column: auto !important; grid-row: auto !important; }
+.manage-hint { display: flex; align-items: center; gap: 0.55rem; margin-block-end: var(--gap-section); padding: 0.6rem 0.9rem; border-radius: var(--r-md); border: 1px dashed color-mix(in srgb, var(--cyan) 32%, var(--line-2)); background: color-mix(in srgb, var(--cyan) 7%, transparent); color: var(--muted); font-size: 0.84rem; }
+.manage-hint .ic { inline-size: 16px; block-size: 16px; color: var(--cyan); flex: none; }
+.manage-hint b { color: var(--text); font-weight: 600; }
 .gcard[draggable="true"], .stile[draggable="true"] { cursor: grab; }
 .gcard.dragging, .stile.dragging { opacity: 0.4; cursor: grabbing; }
 
@@ -553,6 +557,7 @@ h1, h2, h3 { margin: 0; font-family: var(--display); font-weight: 600; letter-sp
 /* ---------- Advanced group view ---------- */
 .gexpand { display: inline-flex; align-items: center; justify-content: center; inline-size: 34px; block-size: 34px; border-radius: 10px; border: 1px solid var(--line-2); background: var(--panel-2); color: var(--muted); font-size: 1.05rem; line-height: 1; cursor: pointer; transition: border-color 0.2s var(--ease), color 0.2s var(--ease), transform 0.2s var(--ease); }
 .gexpand:hover { border-color: var(--cyan); color: var(--text); transform: translateY(-1px); }
+.gexpand .ic { inline-size: 17px; block-size: 17px; }
 .ins-open { margin-block-start: 0.7rem; inline-size: 100%; padding: 0.45rem; border-radius: var(--r-sm); border: 1px solid var(--line-2); background: color-mix(in srgb, var(--cyan) 12%, transparent); color: var(--text); font: inherit; font-size: 0.78rem; font-weight: 600; cursor: pointer; }
 .ins-open:hover { border-color: var(--cyan); }
 .gv-modal { inline-size: min(1040px, 100%); }

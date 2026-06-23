@@ -136,6 +136,8 @@ export default
     'ui.sensorId': 'Capteur',
     'ui.manage': 'Gérer',
     'ui.done': 'Terminé',
+    'ui.dragHint': 'Glissez les cartes et tuiles pour réorganiser',
+    'ui.dragHintTouch': 'Appuyez longuement sur une carte ou tuile, puis glissez pour réorganiser',
     'ui.addGroup': 'Ajouter un groupe',
     'ui.addSensor': 'Ajouter un capteur',
     'ui.newGroup': 'Nouveau groupe',

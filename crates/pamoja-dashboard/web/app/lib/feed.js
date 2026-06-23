@@ -9,18 +9,46 @@
 // not answer, so we fall back to a bundled snapshot shipped beside the page
 // (state.<scenario>.json, relative so it works under any base path). The same build runs
 // live against a real node or the dev server and serverless on Pages, with no flag.
+//
+// A snapshot may carry an optional `catalog` manifest; when present it is folded into the
+// layout catalog (see lib/catalog.js), so a device can supply its own sensor presets,
+// link kinds, and site map without a separate request.
 
-import { store } from './store.js';
+import { store } from '../store.js';
+import { mergeCatalog } from './catalog.js';
 
+/** The mock scenarios the dev server and static fallback expose, in menu order. */
 export const SCENARIOS = ['normal', 'alarm', 'sensor-fault', 'low-battery', 'link-lost', 'cold-start'];
 
+/** The latest fleet snapshot, or `null` before the first frame arrives. */
 export const fleet = $.signal(null);
+
+/** Whether the feed is currently connected; drives the offline indicator. */
 export const connected = $.signal(true);
 
 let es;
 let lastScenario;
 let replay;
 
+/**
+ * Folds any catalog manifest a snapshot carries into the shared layout catalog, then
+ * publishes the snapshot to the {@link fleet} signal.
+ *
+ * @param {object} snap - the decoded fleet snapshot.
+ * @returns {void}
+ */
+function publish(snap)
+{
+  if (snap && snap.catalog) mergeCatalog(snap.catalog);
+  fleet.value = snap;
+}
+
+/**
+ * Opens the feed for the current scenario: probes the device, then either streams live
+ * updates or replays the bundled snapshot on a static host.
+ *
+ * @returns {Promise<void>} resolves once the source has been chosen and started.
+ */
 async function open()
 {
   if (es) { es.close(); es = null; }
@@ -34,7 +62,7 @@ async function open()
   try
   {
     const res = await fetch('/state' + query, { cache: 'no-store' });
-    if (res.ok) { fleet.value = await res.json(); connected.value = true; live = true; }
+    if (res.ok) { publish(await res.json()); connected.value = true; live = true; }
   } catch { /* no device endpoint here */ }
   if (lastScenario !== store.state.scenario) return; // a newer open() superseded this one
   if (!live) { snapshot(); return; }
@@ -42,7 +70,7 @@ async function open()
   if (typeof EventSource !== 'undefined')
   {
     es = new EventSource('/events' + query);
-    es.onmessage = (e) => { connected.value = true; try { fleet.value = JSON.parse(e.data); } catch { /* partial frame */ } };
+    es.onmessage = (e) => { connected.value = true; try { publish(JSON.parse(e.data)); } catch { /* partial frame */ } };
     es.onerror = () => { connected.value = false; };
   } else
   {
@@ -50,15 +78,25 @@ async function open()
   }
 }
 
+/**
+ * Polls GET /state on a fixed cadence, for browsers without EventSource.
+ *
+ * @param {string} query - the `?scenario=` query string to request.
+ * @returns {Promise<void>} resolves after scheduling the next poll.
+ */
 async function poll(query)
 {
-  try { fleet.value = await (await fetch('/state' + query)).json(); connected.value = true; }
+  try { publish(await (await fetch('/state' + query)).json()); connected.value = true; }
   catch { connected.value = false; }
   setTimeout(() => poll(query), 2500);
 }
 
-// Static-host fallback: load the bundled snapshot for the current scenario (relative path,
-// so it works under any base), with the normal scenario as a last resort.
+/**
+ * Static-host fallback: loads the bundled snapshot for the current scenario, with the
+ * normal scenario as a last resort.
+ *
+ * @returns {Promise<void>} resolves once a snapshot is loaded or all candidates fail.
+ */
 async function snapshot()
 {
   for (const url of ['./state.' + store.state.scenario + '.json', './state.normal.json'])
@@ -72,18 +110,28 @@ async function snapshot()
   connected.value = false;
 }
 
-/** Drives the static fallback: cycles the bundled frames on the live cadence so the page animates like the device feed. */
+/**
+ * Drives the static fallback: cycles the bundled frames on the live cadence so the page
+ * animates like the device feed.
+ *
+ * @param {object|object[]} data - a single snapshot or an array of frames.
+ * @returns {void}
+ */
 function play(data)
 {
   clearInterval(replay);
   const frames = Array.isArray(data) ? data : [data];
   connected.value = true;
   let i = 0;
-  fleet.value = frames[0];
-  if (frames.length > 1) replay = setInterval(() => { i = (i + 1) % frames.length; fleet.value = frames[i]; }, 2000);
+  publish(frames[0]);
+  if (frames.length > 1) replay = setInterval(() => { i = (i + 1) % frames.length; publish(frames[i]); }, 2000);
 }
 
-/** Opens the stream and reconnects whenever the scenario preference changes. */
+/**
+ * Opens the stream and reconnects whenever the scenario preference changes.
+ *
+ * @returns {void}
+ */
 export function connectFeed()
 {
   open();

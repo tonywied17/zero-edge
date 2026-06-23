@@ -8,13 +8,13 @@
 // they behave like the framework expects, with no custom z-index or document listeners.
 
 import { store } from '../store.js';
-import { t, nf, LOCALES, setLocale, localeName } from '../i18n.js';
-import { SCENARIOS } from '../feed.js';
-import { currentFleet } from '../edits.js';
+import { t, nf, LOCALES, setLocale, localeName } from '../lib/i18n.js';
+import { SCENARIOS } from '../lib/feed.js';
+import { currentFleet } from '../lib/edits.js';
 import { open } from '../nav.js';
 import { openNetworkOverlay } from './network-view.js';
 import { problems } from './alarm-bar.js';
-import { esc } from '../viz.js';
+import { esc } from '../lib/viz/index.js';
 
 const SVG = (d) => `<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
 const ICON =
@@ -31,22 +31,43 @@ const CHEVRON = '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="curre
 $.component('top-bar', {
   state: { localeOpen: false, scenarioOpen: false },
 
+  /** Re-renders on store changes and on each fleet frame (for the alarm count). */
   mounted()
   {
     this._un = store.subscribe(() => this.setState({}));
     this._eff = $.effect(() => { currentFleet(); this.setState({}); });
   },
+  /** Tears down the store subscription and fleet effect. */
   destroyed() { if (this._un) this._un(); if (typeof this._eff === 'function') this._eff(); },
 
+  /** Opens the locale menu and closes the scenario menu. */
   toggleLocale() { this.state.scenarioOpen = false; this.state.localeOpen = !this.state.localeOpen; },
+  /** Opens the scenario menu and closes the locale menu. */
   toggleScenario() { this.state.localeOpen = false; this.state.scenarioOpen = !this.state.scenarioOpen; },
+  /** Closes the locale menu. */
   closeLocale() { this.state.localeOpen = false; },
+  /** Closes the scenario menu. */
   closeScenario() { this.state.scenarioOpen = false; },
 
+  /**
+   * Switches the active locale and closes the menu.
+   *
+   * @param {string} l - the chosen locale tag.
+   * @returns {Promise<void>} resolves once the locale is active.
+   */
   async pickLocale(l) { this.state.localeOpen = false; await setLocale(l); },
+  /**
+   * Switches the dev scenario and closes the menu.
+   *
+   * @param {string} s - the chosen scenario key.
+   * @returns {void}
+   */
   pickScenario(s) { this.state.scenarioOpen = false; store.dispatch('setScenario', s); },
+  /** Opens the network overlay. */
   openNetwork() { openNetworkOverlay(); },
+  /** Opens the alarm drawer through the overlay nav. */
   openAlarms() { open(() => store.dispatch('openAlarms'), () => store.dispatch('closeAlarms')); },
+  /** Toggles between the night and day themes, persisting the choice. */
   toggleTheme()
   {
     const next = store.state.theme === 'night' ? 'day' : 'night';
@@ -54,6 +75,11 @@ $.component('top-bar', {
     document.documentElement.dataset.theme = next;
   },
 
+  /**
+   * Renders the brand and the control deck.
+   *
+   * @returns {string} the top-bar markup.
+   */
   render()
   {
     const s = this.state;

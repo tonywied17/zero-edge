@@ -35,6 +35,8 @@ export default
     'ui.sensorId': 'Sensor',
     'ui.manage': 'Manage',
     'ui.done': 'Done',
+    'ui.dragHint': 'Drag cards and tiles to reorder',
+    'ui.dragHintTouch': 'Touch and hold a card or tile, then drag to reorder',
     'ui.addGroup': 'Add group',
     'ui.addSensor': 'Add sensor',
     'ui.newGroup': 'New group',

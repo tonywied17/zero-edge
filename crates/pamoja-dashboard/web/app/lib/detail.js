@@ -6,8 +6,17 @@
 // scrollable event log; each caller wraps it with its own header.
 
 import { t, nf, fmt, ago } from './i18n.js';
-import { tileViz, detailGraph, trendArrow, isDiscrete, vizFor, esc } from './viz.js';
+import { tileViz, detailGraph, trendArrow, isDiscrete, vizFor, esc } from './viz/index.js';
 
+/**
+ * Keeps each event log scrolled to its newest line unless the user has scrolled up.
+ *
+ * Binds a one-time scroll listener per log that tracks whether the view is pinned to the
+ * bottom, then re-pins after a re-render. Call from the host component's `updated` hook.
+ *
+ * @param {HTMLElement} root - the component root to find `.dlog` logs within.
+ * @returns {void}
+ */
 export function stickLog(root)
 {
   if (!root) return;
@@ -23,6 +32,13 @@ export function stickLog(root)
   });
 }
 
+/**
+ * Renders the shared sensor detail body: hero visualization, history graph, stat grid,
+ * and a merged recent-events log.
+ *
+ * @param {object} s - the sensor, carrying `reading`, `history`, `events`, and `mode`.
+ * @returns {string} the detail-body markup (no header).
+ */
 export function sensorDetailBody(s)
 {
   const r = s.reading;

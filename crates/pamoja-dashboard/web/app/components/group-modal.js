@@ -8,15 +8,21 @@
 // drawer's "Group" button. Driven by store.group; built from currentFleet().
 
 import { store } from '../store.js';
-import { currentFleet } from '../edits.js';
+import { currentFleet } from '../lib/edits.js';
 import { open, back } from '../nav.js';
-import { t, nf, fmt } from '../i18n.js';
-import { conn, tileViz, trendArrow, isDiscrete, vizFor, esc } from '../viz.js';
+import { t, nf, fmt } from '../lib/i18n.js';
+import { conn, tileViz, trendArrow, isDiscrete, vizFor, esc } from '../lib/viz/index.js';
 import { openMeshOverlay } from './mesh-modal.js';
 
 // Sensors shown per page in the group view before it paginates.
 const PAGE = 6;
 
+/**
+ * Flattens the fleet into an ordered list of every group with its owning org.
+ *
+ * @param {object} f - the current fleet.
+ * @returns {Array<{org: object, group: object}>} the flattened group list.
+ */
 function flat(f)
 {
   const out = [];
@@ -27,19 +33,48 @@ function flat(f)
 $.component('group-modal', {
   state: { page: 0, pickerOpen: false },
 
+  /** Re-renders on store changes and on each fleet frame. */
   mounted()
   {
     this._un = store.subscribe(() => this.setState({}));
     this._eff = $.effect(() => { currentFleet(); this.setState({}); });
   },
+  /** Tears down the store subscription and fleet effect. */
   destroyed() { if (this._un) this._un(); if (typeof this._eff === 'function') this._eff(); },
 
+  /** Closes the modal by unwinding one history entry. */
   close() { back(); },
+  /**
+   * Closes the modal when the backdrop itself is clicked.
+   *
+   * @param {MouseEvent} e - the click event.
+   * @returns {void}
+   */
   onOverlay(e) { if (e.target.classList.contains('modal-overlay')) back(); },
+  /**
+   * Switches to another group from the rail, resetting the page and closing the picker.
+   *
+   * @param {MouseEvent} e - the click event.
+   * @returns {void}
+   */
   swap(e) { const el = e.target.closest('[data-gid]'); if (el) { this.state.page = 0; this.state.pickerOpen = false; store.dispatch('setGroupView', el.dataset.gid); } },
+  /** Toggles the group picker rail. */
   togglePicker() { this.setState({ pickerOpen: !this.state.pickerOpen }); },
+  /** Closes the group picker rail. */
   closePicker() { if (this.state.pickerOpen) this.setState({ pickerOpen: false }); },
+  /**
+   * Jumps to a sensor-grid page from the pager.
+   *
+   * @param {MouseEvent} e - the click event.
+   * @returns {void}
+   */
   setPage(e) { const el = e.target.closest('[data-page]'); if (el) this.setState({ page: Number(el.dataset.page) }); },
+  /**
+   * Opens a sensor's detail (or the mesh overlay for a mesh sensor) from a card.
+   *
+   * @param {MouseEvent} e - the click event.
+   * @returns {void}
+   */
   onSensor(e)
   {
     const el = e.target.closest('[data-sid]'); if (!el) return;
@@ -48,6 +83,12 @@ $.component('group-modal', {
     if (s && vizFor(s.reading.key, s.reading.unit) === 'mesh') { openMeshOverlay(sid); return; }
     open(() => store.dispatch('selectSensor', sid), () => store.dispatch('closeSensor'));
   },
+  /**
+   * Resolves a sensor by its `groupId/sensorId` key from the current fleet.
+   *
+   * @param {string} sid - the `gid/sid` key.
+   * @returns {object|null} the sensor, or null.
+   */
   sensorBySid(sid)
   {
     const f = currentFleet(); if (!f) return null;
@@ -56,6 +97,13 @@ $.component('group-modal', {
     return null;
   },
 
+  /**
+   * Renders one large sensor card for the group grid.
+   *
+   * @param {object} group - the group the sensor belongs to.
+   * @param {object} s - the sensor.
+   * @returns {string} the card markup.
+   */
   card(group, s)
   {
     const r = s.reading;
@@ -80,6 +128,11 @@ $.component('group-modal', {
       </article>`;
   },
 
+  /**
+   * Renders the modal for the active group, with its rail, paged grid, and pager.
+   *
+   * @returns {string} the modal markup, or an empty placeholder when no group is active.
+   */
   render()
   {
     const id = store.state.group;
