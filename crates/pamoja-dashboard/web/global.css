@@ -219,6 +219,9 @@ h1, h2, h3 { margin: 0; font-family: var(--display); font-weight: 600; letter-sp
 
 /* ---------- Groups grid ---------- */
 .groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 372px), 1fr)); grid-auto-rows: 1px; row-gap: 0; column-gap: clamp(0.9rem, 2vw, 1.3rem); align-items: start; }
+/* Single-column (phones): drop the masonry packing and let cards stack at natural height. */
+.groups.mono { grid-template-columns: 1fr; grid-auto-rows: auto; row-gap: clamp(0.9rem, 2vw, 1.3rem); }
+.groups.mono .gcard { grid-column: auto !important; grid-row: auto !important; }
 .gcard[draggable="true"], .stile[draggable="true"] { cursor: grab; }
 .gcard.dragging, .stile.dragging { opacity: 0.4; cursor: grabbing; }
 

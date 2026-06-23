@@ -62,7 +62,7 @@ $.component('dashboard-page', {
 
   scheduleLayout() { if (!this._raf) this._raf = requestAnimationFrame(() => this.layout()); },
 
-  /** Masonry: place each card at column i%cols, stacked at that column's running bottom (row-major, no gaps). Placement is cached so render() re-emits it inline, since the morph strips JS-set styles. */
+  /** Masonry: place each card at column i%cols, stacked at that column's running bottom (row-major, no gaps). Placement is cached so render() re-emits it inline, since the morph strips JS-set styles. One column drops to natural stacking (see .groups.mono). */
   layout()
   {
     this._raf = 0;
@@ -70,8 +70,20 @@ $.component('dashboard-page', {
     if (!grid) return;
     const cards = [...grid.children].filter((c) => c.classList.contains('gcard'));
     if (!cards.length) return;
+    const colGap = parseFloat(getComputedStyle(grid).columnGap) || 18;
+    // Derive the column count from the container width and the CSS min track (372px), not
+    // from the live grid - our explicit placements would otherwise pin the desktop column
+    // count on a phone and squish the cards instead of collapsing.
+    const cols = Math.max(1, Math.floor((grid.clientWidth + colGap) / (372 + colGap)));
+    if (cols <= 1)
+    {
+      grid.classList.add('mono');
+      this._place = {};
+      cards.forEach((c) => { c.style.gridColumn = ''; c.style.gridRow = ''; });
+      return;
+    }
+    grid.classList.remove('mono');
     const gap = 18;
-    const cols = Math.max(1, getComputedStyle(grid).gridTemplateColumns.split(' ').filter(Boolean).length);
     const colBottom = new Array(cols).fill(1);
     cards.forEach((c, i) =>
     {
