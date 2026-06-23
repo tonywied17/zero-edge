@@ -75,14 +75,15 @@ $.component('dashboard-page', {
     // from the live grid - our explicit placements would otherwise pin the desktop column
     // count on a phone and squish the cards instead of collapsing.
     const cols = Math.max(1, Math.floor((grid.clientWidth + colGap) / (372 + colGap)));
-    if (cols <= 1)
+    // _mono is re-emitted by render() so the morph keeps the class between ticks.
+    this._mono = cols <= 1;
+    grid.classList.toggle('mono', this._mono);
+    if (this._mono)
     {
-      grid.classList.add('mono');
       this._place = {};
       cards.forEach((c) => { c.style.gridColumn = ''; c.style.gridRow = ''; });
       return;
     }
-    grid.classList.remove('mono');
     const gap = 18;
     const colBottom = new Array(cols).fill(1);
     cards.forEach((c, i) =>
@@ -237,7 +238,7 @@ $.component('dashboard-page', {
     const ap = (this._place || {}).__add;
     const astyle = ap ? `grid-column:${ap.c};grid-row:${ap.r} / span ${ap.s}` : 'grid-row:auto / span 170';
     const add = editing ? `<button class="gcard add-card" data-oid="${org.id}" z-key="__add" @click="onAddGroup" style="${astyle}"><span class="add-plus">+</span> ${t('ui.addGroup')}</button>` : '';
-    return `<div class="groups">${org.groups.map((g) => this.groupCard(g, editing)).join('')}${add}</div>`;
+    return `<div class="groups${this._mono ? ' mono' : ''}">${org.groups.map((g) => this.groupCard(g, editing)).join('')}${add}</div>`;
   },
 
   groupCard(g, editing)
