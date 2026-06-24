@@ -16,6 +16,23 @@
 
 </div>
 
+## In plain words
+
+pamoja is free software for building things that watch and control the physical world - a
+fridge that warns you before vaccines spoil, a pump that runs when a tank gets low, a sensor
+that keeps working when the internet does not. It is built to run on cheap, solar-powered
+hardware and the ordinary phones people already have, in places with little money and weak or
+no connectivity. It costs nothing and works offline.
+
+You do not have to be an engineer to use it, and you do not give anything up if you are one.
+
+**Where to start**
+
+- **Just want to see it?** Open the [live dashboard demo](https://pamoja.molex.cloud/dashboard) - it runs entirely in your browser, with nothing to install.
+- **Try it with no hardware.** `cargo xtask dashboard dev` serves the dashboard from a built-in mock fleet, and the simulators (`pamoja-sim`) stand in for real sensors and radios.
+- **Building something?** Skip to [A quick look](#a-quick-look) and the [crate list](#engine-and-capability-crates), and add only the pieces you need.
+- **On a microcontroller or in a rural clinic?** That is the design target, not an afterthought - see [Why it exists](#why-it-exists).
+
 ## What is pamoja
 
 pamoja is a single, modular SDK for IoT, robotics, and drones: one memory-safe Rust engine at the core, with idiomatic bindings for the languages a device developer actually uses. You install only the capabilities you need, and the same concepts work the same way in every language.
