@@ -12,7 +12,7 @@ import { t, nf, fmt } from '../lib/i18n.js';
 import { currentFleet, provision } from '../lib/edits.js';
 import { live } from '../lib/feed.js';
 import { unlocked, promptUnlock } from '../lib/pair.js';
-import { conn, tileViz, bannerRing, trendArrow, isDiscrete, vizFor, esc } from '../lib/viz/index.js';
+import { conn, tileViz, bannerRing, trendArrow, isDiscrete, isStat, realSensors, groupStats, vizFor, esc } from '../lib/viz/index.js';
 import { openMeshOverlay } from './mesh-modal.js';
 
 const ICON_EDIT = '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19.5l-4 1 1-4z"/></svg>';
@@ -28,7 +28,10 @@ const ICON_DRAG = '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="curre
  */
 function meshPeerCount(g)
 {
-  return g.sensors.filter((x) => vizFor(x.reading.key, x.reading.unit) !== 'mesh').length;
+  // The mesh preview draws the node's neighbour graph, so its node count is the neighbours
+  // stat (a real mesh peer count), not the number of sensors on the group.
+  const neigh = (g.sensors || []).find((s) => s.reading.key === 'neighbours');
+  return neigh ? Math.max(1, Math.round(neigh.reading.value)) : 5;
 }
 
 /**
@@ -103,9 +106,10 @@ $.component('dashboard-page', {
   scheduleLayout() { if (!this._raf) this._raf = requestAnimationFrame(() => this.layout()); },
 
   /**
-   * Masonry: place each card at column i%cols, stacked at that column's running bottom
-   * (row-major, no gaps). Placement is cached so render() re-emits it inline, since the
-   * morph strips JS-set styles. One column drops to natural stacking (see .groups.mono).
+   * Masonry: place each card in the currently shortest column (so a tall card, like a mesh
+   * node with a stats strip, does not strand the next card - the add-group card flows in
+   * right after the last group). Placement is cached so render() re-emits it inline, since
+   * the morph strips JS-set styles. One column drops to natural stacking (see .groups.mono).
    *
    * @returns {void}
    */
@@ -132,14 +136,19 @@ $.component('dashboard-page', {
     }
     const gap = 18;
     const colBottom = new Array(cols).fill(1);
-    cards.forEach((c, i) =>
+    let lastCol = 0;
+    cards.forEach((c) =>
     {
-      const col = i % cols;
+      // Groups pack into the shortest column; the add-group card follows the last group in
+      // its own column, so it sits right under the final card instead of stranded elsewhere.
+      const isAdd = c.classList.contains('add-card');
+      const col = isAdd ? lastCol : colBottom.indexOf(Math.min(...colBottom));
       const h = Math.max(1, Math.ceil(c.offsetHeight));
       const row = colBottom[col];
       c.style.gridColumn = String(col + 1);
       c.style.gridRow = row + ' / span ' + h;
       colBottom[col] = row + h + gap;
+      if (!isAdd) lastCol = col;
       this._place[c.dataset.gid || '__add'] = { c: col + 1, r: row, s: h };
     });
   },
@@ -153,7 +162,9 @@ $.component('dashboard-page', {
       const el = e.target.closest('[draggable="true"]');
       if (!el) return;
       const group = el.classList.contains('gcard');
-      this._drag = { el, container: el.parentNode, sel: group ? '.gcard[draggable]' : '.stile[draggable]', group };
+      const stat = el.classList.contains('statcard');
+      const sel = group ? '.gcard[draggable]' : stat ? '.statcard[draggable]' : '.stile[draggable]';
+      this._drag = { el, container: el.parentNode, sel, group };
       el.classList.add('dragging');
       e.dataTransfer.effectAllowed = 'move';
       try { e.dataTransfer.setData('text/plain', ''); } catch (err) { /* Safari */ }
@@ -191,7 +202,12 @@ $.component('dashboard-page', {
       const gid = card && card.dataset.gid;
       if (gid)
       {
-        const ids = [...container.querySelectorAll(':scope > .stile[data-sid]')].map((c) => c.dataset.sid.split('/')[1]);
+        // Persist the whole group order: sensor tiles then stat cards (each section keeps
+        // its own order; the data list is a single ordered list).
+        const ids = [
+          ...card.querySelectorAll('.sensors > .stile[data-sid]'),
+          ...card.querySelectorAll('.statcards > .statcard[data-sid]'),
+        ].map((c) => c.dataset.sid.split('/')[1]);
         store.dispatch('reorderSensors', { gid, ids });
       }
     }
@@ -289,7 +305,10 @@ $.component('dashboard-page', {
     for (const o of f.orgs) for (const g of o.groups)
     {
       groups++;
-      for (const s of g.sensors) { sensors++; if (s.reading.status === 'alarm') alarms++; else if (s.reading.status === 'warn') warns++; }
+      sensors += realSensors(g).length;
+      // Alarm and warn tallies still include stats - a stat (a lost relay, a dropped uplink)
+      // can be the most urgent thing on a node.
+      for (const s of g.sensors) { if (s.reading.status === 'alarm') alarms++; else if (s.reading.status === 'warn') warns++; }
     }
     return `
       <section class="banner" data-status="${f.status}">
@@ -390,9 +409,10 @@ $.component('dashboard-page', {
           ${rm}
         </div>
         <div class="sensors">
-          ${g.sensors.map((s) => this.sensorTile(g, s, editing)).join('')}
+          ${g.sensors.filter((s) => !isStat(s)).map((s) => this.sensorTile(g, s, editing)).join('')}
           ${addS}
         </div>
+        ${this.statStrip(g, editing)}
         <div class="gfoot">
           <button class="gexpand" type="button" data-gid="${g.id}" @click="onOpenGroup" aria-label="${esc(t('ui.group'))}" title="${esc(t('ui.group'))}">${ICON_EXPAND}</button>
         </div>
@@ -426,6 +446,47 @@ $.component('dashboard-page', {
         ${battery}
         ${readout}
         ${tileViz(s, false, nodes)}
+      </article>`;
+  },
+
+  /**
+   * Renders the group's node-stats strip (neighbours, hops, link/relay status, ...), shown
+   * apart from sensors and never counted as one. Empty when the group has no stats.
+   *
+   * @param {object} g - the group.
+   * @param {boolean} editing - whether Manage mode is active.
+   * @returns {string} the stats-strip markup, or an empty string.
+   */
+  statStrip(g, editing)
+  {
+    const stats = groupStats(g);
+    if (!stats.length) return '';
+    return `<div class="statstrip">
+        <span class="statstrip-h">${esc(t('ui.stats'))}</span>
+        <div class="statcards">${stats.map((s) => this.statCard(g, s, editing)).join('')}</div>
+      </div>`;
+  },
+
+  /**
+   * Renders one compact node-stat card (label + value or state); clicking opens its detail.
+   *
+   * @param {object} g - the group the stat belongs to.
+   * @param {object} s - the stat entry.
+   * @param {boolean} editing - whether Manage mode is active.
+   * @returns {string} the stat-card markup.
+   */
+  statCard(g, s, editing)
+  {
+    const r = s.reading;
+    const sid = g.id + '/' + s.id;
+    const rm = editing ? `<button class="tile-rm" data-key="${sid}" @click="onRemoveSensor" aria-label="${esc(t('ui.remove'))}">✕</button>` : '';
+    const unit = t('unit.' + r.unit);
+    const value = r.state ? t(r.state) : `${fmt(r.value)}${unit ? ' ' + unit : ''}`;
+    return `<article class="statcard" data-status="${r.status}" data-sid="${sid}" z-key="${s.id}" @click="onSensor" tabindex="0" role="button"${editing ? ' draggable="true"' : ''}>
+        ${rm}
+        <span class="statcard-dot"></span>
+        <div class="statcard-text"><span class="statlabel">${esc(t('label.' + r.key))}</span>
+        <span class="statval">${esc(value)}</span></div>
       </article>`;
   },
 });

@@ -81,6 +81,11 @@ pub struct Reading {
     /// read-only sensor leaves this `None`, and the page shows control only when it is set.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub actions: Option<Vec<String>>,
+    /// Whether this is a node or network stat (neighbours, hops, link or relay status, a
+    /// tamper-log record count) rather than a measurement of the world. The page counts and
+    /// renders stats apart from sensors. Defaults `false`.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub stat: bool,
 }
 
 impl Reading {
@@ -105,6 +110,7 @@ impl Reading {
             trend: None,
             state: None,
             actions: None,
+            stat: false,
         }
     }
 
@@ -176,6 +182,17 @@ impl Reading {
     /// The reading, for chaining.
     pub fn with_actions(mut self, actions: impl IntoIterator<Item = impl Into<String>>) -> Self {
         self.actions = Some(actions.into_iter().map(Into::into).collect());
+        self
+    }
+
+    /// Marks the reading as a node or network stat rather than a measurement, so the page
+    /// counts and renders it apart from sensors.
+    ///
+    /// # Returns
+    ///
+    /// The reading, for chaining.
+    pub fn as_stat(mut self) -> Self {
+        self.stat = true;
         self
     }
 }

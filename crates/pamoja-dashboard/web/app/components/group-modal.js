@@ -11,7 +11,7 @@ import { store } from '../store.js';
 import { currentFleet } from '../lib/edits.js';
 import { open, back } from '../nav.js';
 import { t, nf, fmt } from '../lib/i18n.js';
-import { conn, tileViz, trendArrow, isDiscrete, vizFor, esc } from '../lib/viz/index.js';
+import { conn, tileViz, trendArrow, isDiscrete, realSensors, vizFor, esc } from '../lib/viz/index.js';
 import { openMeshOverlay } from './mesh-modal.js';
 
 // Sensors shown per page in the group view before it paginates.
@@ -146,7 +146,7 @@ $.component('group-modal', {
 
     if (this._lastId !== id) { this._lastId = id; this.state.page = 0; }
 
-    const sensors = group.sensors;
+    const sensors = realSensors(group);
     const pages = Math.max(1, Math.ceil(sensors.length / PAGE));
     const page = Math.min(Math.max(this.state.page || 0, 0), pages - 1);
     const start = page * PAGE;

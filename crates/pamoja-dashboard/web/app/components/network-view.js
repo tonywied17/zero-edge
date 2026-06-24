@@ -16,7 +16,7 @@ import { open, back } from '../nav.js';
 import { sensorDetailBody, stickLog } from '../lib/detail.js';
 import { t, nf } from '../lib/i18n.js';
 import { catalog } from '../lib/catalog.js';
-import { LINK_NAMES, LINK_COLORS, esc } from '../lib/viz/index.js';
+import { LINK_NAMES, LINK_COLORS, realSensors, esc } from '../lib/viz/index.js';
 
 const W = 1040, H = 660, SR = 60;
 
@@ -186,8 +186,9 @@ $.component('network-view', {
       if (online) { const dur = (st === 'alarm' ? 1.2 : st === 'warn' ? 1.8 : 2.4 + i * 0.2).toFixed(2); for (let k = 0; k < 2; k++) { const b = (k * dur / 2).toFixed(2); packets += `<circle r="3.6" class="${pkClass}" style="fill:${pkColor}" opacity="0"><animateMotion dur="${dur}s" begin="${b}s" repeatCount="indefinite" path="${path}"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.9;1" dur="${dur}s" begin="${b}s" repeatCount="indefinite"/></circle>`; } }
       if (!map)
       {
-        const m = p.g.sensors.length || 1;
-        p.g.sensors.forEach((s, j) =>
+        const leaves = realSensors(p.g);
+        const m = leaves.length || 1;
+        leaves.forEach((s, j) =>
         {
           const la = p.ang + (-0.55 + (m === 1 ? 0.275 : (j / (m - 1)) * 1.1));
           const lx = p.x + SR * Math.cos(la), ly = p.y + SR * Math.sin(la);
@@ -295,7 +296,7 @@ $.component('network-view', {
     const spec = catalog.linkSpec[g.link.kind] || catalog.linkSpec.lora;
     const rssi = spec.rssi + (g.link.strength - 2) * 6;
     const issues = g.sensors.filter((s) => s.reading.status !== 'ok');
-    const pkts = Math.round(4 + g.sensors.length * 1.5);
+    const pkts = Math.round(4 + realSensors(g).length * 1.5);
     const row = (k, v) => `<div class="ins-row"><span>${k}</span><b>${v}</b></div>`;
     const issuesHtml = issues.length
       ? issues.map((s) => `<div class="ins-issue" data-level="${s.reading.status === 'alarm' ? 'error' : 'warn'}">${esc(t('label.' + s.reading.key))} · ${nf(s.reading.value)}${t('unit.' + s.reading.unit)}</div>`).join('')
@@ -309,7 +310,7 @@ $.component('network-view', {
         ${row(t('ui.throughput'), spec.speed)}
         ${row(t('ui.latency'), `${spec.lat} ms`)}
         ${row(t('ui.packets'), `${pkts}/s`)}
-        ${row(t('ui.sensors'), nf(g.sensors.length))}
+        ${row(t('ui.sensors'), nf(realSensors(g).length))}
         <div class="ins-sec">${t('ui.issues')}</div>
         <div class="ins-issues">${issuesHtml}</div>
         <button class="ins-open" type="button" data-gid="${g.id}" @click="onOpenGroup">${t('ui.group')} →</button>

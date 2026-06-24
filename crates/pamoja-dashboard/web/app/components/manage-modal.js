@@ -68,6 +68,26 @@ $.component('manage-modal', {
     return catalog.sensorPresets.filter((p) => !p.meshOnly || kind === 'mesh');
   },
 
+  /**
+   * Renders the type picker, splitting real sensors from node-stat cards so the two are
+   * never confused when provisioning a group.
+   *
+   * @param {string} groupId - the target group's id.
+   * @param {string} selected - the currently selected preset id.
+   * @returns {string} the type-field markup.
+   */
+  typeField(groupId, selected)
+  {
+    const presets = this.presetsFor(groupId);
+    const chip = (p) => `<button type="button" class="chip-opt ${selected === p.id ? 'on' : ''}" @click="setKind('${p.id}')">${esc(t('label.' + p.key))}</button>`;
+    const sensors = presets.filter((p) => !p.stat);
+    const stats = presets.filter((p) => p.stat);
+    return `<div class="field"><span>${t('ui.type')}</span>
+        <div class="chips">${sensors.map(chip).join('')}</div>
+        ${stats.length ? `<span class="chips-sub">${esc(t('ui.stats'))}</span><div class="chips">${stats.map(chip).join('')}</div>` : ''}
+      </div>`;
+  },
+
   /** Cancels the dialog by unwinding one history entry. */
   cancel() { back(); },
   /**
@@ -111,9 +131,7 @@ $.component('manage-modal', {
           <div class="chips">${catalog.linkKinds.map((k) => `<button type="button" class="chip-opt ${s.linkKind === k ? 'on' : ''}" @click="setLink('${k}')">${esc(LINK_NAMES[k] || k)}</button>`).join('')}</div>
         </div>`
       : `
-        <div class="field"><span>${t('ui.type')}</span>
-          <div class="chips">${this.presetsFor(c.groupId).map((p) => `<button type="button" class="chip-opt ${s.sensorKind === p.id ? 'on' : ''}" @click="setKind('${p.id}')">${esc(t('label.' + p.key))}</button>`).join('')}</div>
-        </div>
+        ${this.typeField(c.groupId, s.sensorKind)}
         <label class="field"><span>${t('ui.value')}</span>
           <input class="field-input" type="number" step="any" z-model="value" placeholder="${t('ui.auto')}" /></label>
         <label class="field"><span>${t('ui.binding')}</span>

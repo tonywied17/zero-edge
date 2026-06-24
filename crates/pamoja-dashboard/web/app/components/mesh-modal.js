@@ -1,17 +1,18 @@
-// mesh-modal.js - the interactive neighbour-mesh map for a mesh sensor.
+// mesh-modal.js - the interactive mesh-topology map for a mesh node.
 //
-// A full-screen, pan/zoom map of one group's mesh node: the gateway at the top, the group
-// hub in the middle, and the group's sensors as leaves around it (mock geo positions),
-// with packets travelling sensor -> hub -> gateway. Click a node to dock an inspector
-// (role, status, reading, link speed, traffic, latency) and open the sensor's full detail.
-// The dashboard/group tile stays the static preview; this is the "show more" view.
+// A full-screen, pan/zoom map of one node's mesh: the gateway at the top, this node (hub) in
+// the middle, the multi-hop route up to the gateway (its length is the node's `hops` stat),
+// and the node's mesh peers fanned below it (their count is the `neighbours` stat), with
+// packets travelling the route and peer -> hub. The map is drawn from the node's stats, not
+// its sensors. Click a node to dock an inspector (role, link, throughput, latency). The
+// dashboard/group tile stays the static preview; this is the "show more" view.
 
 import { store } from '../store.js';
 import { currentFleet } from '../lib/edits.js';
 import { open, back } from '../nav.js';
-import { t, nf, fmt } from '../lib/i18n.js';
+import { t, nf } from '../lib/i18n.js';
 import { catalog } from '../lib/catalog.js';
-import { LINK_NAMES, LINK_COLORS, LINK_RSSI, isDiscrete, vizFor, esc } from '../lib/viz/index.js';
+import { LINK_NAMES, LINK_COLORS, LINK_RSSI, esc } from '../lib/viz/index.js';
 
 const W = 900, H = 560;
 
@@ -113,67 +114,92 @@ $.component('mesh-modal', {
   onNode(e) { const el = e.target.closest('[data-node]'); if (el) store.dispatch('setMeshNode', el.dataset.node); },
   /** Closes the docked node inspector. */
   closeNode() { store.dispatch('clearMeshNode'); },
+
   /**
-   * Opens the full detail modal for the inspected sensor.
+   * Reads a node-stat value by reading key, rounded, or a default when the stat is absent.
    *
-   * @param {MouseEvent} e - the click event.
-   * @returns {void}
+   * @param {object} group - the group to read from.
+   * @param {string} key - the stat reading key, such as `"neighbours"`.
+   * @param {number} dflt - the value to use when the stat is missing.
+   * @returns {number} the rounded stat value.
    */
-  viewSensor(e)
+  statVal(group, key, dflt)
   {
-    const el = e.target.closest('[data-sid]'); if (!el) return;
-    open(() => store.dispatch('selectSensor', el.dataset.sid), () => store.dispatch('closeSensor'));
+    const s = (group.sensors || []).find((x) => x.reading.key === key);
+    return s ? Math.max(0, Math.round(s.reading.value)) : dflt;
   },
 
   /**
-   * Builds the node positions, links, and packet paths for a group's mesh.
+   * Builds the real mesh topology for a node: this node (hub), the multi-hop route up to the
+   * gateway (length from the `hops` stat), and its mesh peers (count from the `neighbours`
+   * stat). The node's stats are the data behind the map, not its sensors.
    *
    * @param {object} group - the group to lay out.
-   * @returns {{nodes: Array, links: Array, packets: Array, pos: object}} the topology.
+   * @returns {{nodes: Array, links: Array, packets: Array, pos: object, neighbours: number, hops: number}} the topology.
    */
   topology(group)
   {
-    const cx = W * 0.5, cy = H * 0.54;
-    const hub = { key: 'hub', role: 'hub', x: cx, y: cy, name: group.name, status: group.status, link: group.link, group };
-    const gw = { key: 'gw', role: 'gateway', x: cx, y: H * 0.13, status: 'ok' };
+    const cx = W * 0.5, hubY = H * 0.6, gwY = H * 0.12;
+    const neighbours = $.clamp(this.statVal(group, 'neighbours', 5), 1, 14);
+    const hops = $.clamp(this.statVal(group, 'hops', 3), 1, 8);
+
+    const hub = { key: 'hub', role: 'hub', x: cx, y: hubY, name: group.name, status: group.status, link: group.link, group };
+    const gw = { key: 'gw', role: 'gateway', x: cx, y: gwY, status: 'ok' };
     const nodes = [gw, hub];
-    const sensors = (group.sensors || []).filter((s) => vizFor(s.reading.key, s.reading.unit) !== 'mesh');
-    const n = sensors.length || 1;
-    const gap = 0.62;
-    sensors.forEach((s, i) =>
+
+    // The route to the gateway: `hops` edges, so `hops - 1` relay nodes between hub and gw.
+    const routeKeys = ['hub'];
+    for (let i = 1; i < hops; i++)
     {
-      const tt = n === 1 ? 0.5 : i / (n - 1);
-      const a = (-Math.PI / 2 + gap) + tt * (2 * Math.PI - 2 * gap);
-      const jit = 0.92 + 0.08 * Math.abs(Math.sin(i * 2.7));
+      const key = 'r' + i;
+      routeKeys.push(key);
       nodes.push({
-        key: 's:' + s.id, role: 'sensor', sid: group.id + '/' + s.id, sensor: s,
-        x: cx + Math.cos(a) * W * 0.3 * jit,
-        y: cy + Math.sin(a) * H * 0.34 * jit,
-        name: t('label.' + s.reading.key), status: s.reading.status,
+        key, role: 'relay', idx: i, total: hops, status: 'ok',
+        x: cx + (i % 2 ? 1 : -1) * W * 0.055,
+        y: hubY + (gwY - hubY) * (i / hops),
       });
-    });
-    const links = [['hub', 'gw']];
-    sensors.forEach((s) => links.push(['s:' + s.id, 'hub']));
-    const packets = [['hub', 'gw']];
-    sensors.forEach((s, i) => { if (i % 2 === 0) packets.push(['s:' + s.id, 'hub', 'gw']); });
+    }
+    routeKeys.push('gw');
+
+    // Mesh peers fanned in the lower arc around the hub, clear of the route above it.
+    for (let j = 0; j < neighbours; j++)
+    {
+      const tt = neighbours === 1 ? 0.5 : j / (neighbours - 1);
+      const a = Math.PI * 0.14 + tt * Math.PI * 0.72;
+      const jit = 0.9 + 0.1 * Math.abs(Math.sin(j * 2.3));
+      nodes.push({
+        key: 'n' + j, role: 'peer', idx: j + 1, status: 'ok',
+        x: cx + Math.cos(a) * W * 0.31 * jit,
+        y: hubY + Math.sin(a) * H * 0.3 * jit,
+      });
+    }
+
+    const links = [];
+    for (let i = 0; i < routeKeys.length - 1; i++) links.push([routeKeys[i], routeKeys[i + 1]]);
+    for (let j = 0; j < neighbours; j++) links.push(['hub', 'n' + j]);
+
+    const packets = [routeKeys.slice()];
+    for (let j = 0; j < neighbours; j++) if (j % 2 === 0) packets.push(['n' + j, 'hub']);
+
     const pos = {}; nodes.forEach((nd) => { pos[nd.key] = nd; });
-    return { nodes, links, packets, pos };
+    return { nodes, links, packets, pos, neighbours, hops };
   },
 
   /**
-   * Renders the docked inspector for a selected node (gateway, hub, or sensor).
+   * Renders the docked inspector for a selected node (gateway, hub, route relay, or peer).
    *
    * @param {object} group - the group being inspected.
    * @param {object} [node] - the selected node; an empty node renders nothing.
+   * @param {{neighbours: number, hops: number}} topo - the topology counts.
    * @returns {string} the inspector markup.
    */
-  inspector(group, node)
+  inspector(group, node, topo)
   {
     if (!node) return '';
     const dbm = (LINK_RSSI[group.link.kind] ?? -90) + (group.link.strength - 2) * 6;
     const speed = catalog.linkSpec[group.link.kind]?.speed || '-';
     const row = (k, v) => `<div class="ins-row"><span>${k}</span><b>${v}</b></div>`;
-    let title, sub, body, foot = '';
+    let title, sub, body;
     if (node.role === 'gateway')
     {
       title = t('ui.gateway'); sub = LINK_NAMES[group.link.kind] || group.link.kind;
@@ -181,21 +207,22 @@ $.component('mesh-modal', {
     } else if (node.role === 'hub')
     {
       title = group.name; sub = `${LINK_NAMES[group.link.kind] || group.link.kind} · ${t('status.' + group.status)}`;
-      const sCount = group.sensors.filter((s) => vizFor(s.reading.key, s.reading.unit) !== 'mesh').length;
-      body = row(t('ui.signal'), `${dbm} dBm`) + row(t('ui.throughput'), speed) + row(t('ui.sensors'), nf(sCount));
+      body = row(t('ui.signal'), `${dbm} dBm`) + row(t('label.neighbours'), nf(topo.neighbours)) + row(t('label.hops'), nf(topo.hops));
+    } else if (node.role === 'relay')
+    {
+      title = t('ui.meshRelay'); sub = t('ui.meshHopOf', { n: node.idx, total: node.total });
+      const lat = 18 + node.idx * 14;
+      body = row(t('ui.link'), t('ui.online')) + row(t('ui.throughput'), speed) + row(t('ui.latency'), `${lat} ms`);
     } else
     {
-      const r = node.sensor.reading;
-      const reading = isDiscrete(r) ? (r.state ? t(r.state) : t('status.' + r.status)) : `${fmt(r.value)} ${t('unit.' + r.unit)}`;
-      const traffic = Math.round(3 + (node.sensor.id.length % 5) + (r.status === 'alarm' ? 9 : 0));
-      title = node.name; sub = t('status.' + r.status);
-      body = row(t('ui.reading') || 'Reading', reading) + row(t('ui.throughput'), `${traffic}/s`) + row(t('ui.latency'), `${40 + traffic * 6} ms`);
-      foot = `<button class="ins-open" type="button" data-sid="${node.sid}" @click="viewSensor">${t('ui.sensorId')} →</button>`;
+      title = t('ui.meshPeer'); sub = t('ui.meshPeerOf', { n: node.idx, total: topo.neighbours });
+      const traffic = 3 + (node.idx % 5);
+      body = row(t('ui.signal'), `${dbm + 4 - node.idx} dBm`) + row(t('ui.throughput'), `${traffic}/s`) + row(t('ui.latency'), `${40 + traffic * 6} ms`);
     }
     return `<div class="net-inspect" data-status="${node.status || 'ok'}">
         <div class="ins-head"><div><div class="ins-title">${esc(title)}</div><div class="ins-sub">${esc(sub)}</div></div>
           <button class="modal-close sm" type="button" @click="closeNode" aria-label="${esc(t('ui.cancel'))}">✕</button></div>
-        ${body}${foot}
+        ${body}
       </div>`;
   },
 
@@ -214,9 +241,8 @@ $.component('mesh-modal', {
     if (!found) return '<div hidden></div>';
     const group = found.group;
     const color = LINK_COLORS[group.link.kind] || '#38e1ff';
-    const { nodes, links, packets, pos } = this.topology(group);
+    const { nodes, links, packets, pos, neighbours, hops } = this.topology(group);
     const sel = store.state.meshNode;
-    const sCount = nodes.filter((nd) => nd.role === 'sensor').length;
 
     const linkSvg = links.map((l) => `<line x1="${pos[l[0]].x.toFixed(1)}" y1="${pos[l[0]].y.toFixed(1)}" x2="${pos[l[1]].x.toFixed(1)}" y2="${pos[l[1]].y.toFixed(1)}" class="mm-link"/>`).join('');
     const pkSvg = packets.map((p, i) =>
@@ -227,10 +253,11 @@ $.component('mesh-modal', {
     }).join('');
     const nodeSvg = nodes.map((nd) =>
     {
-      const r = nd.role === 'gateway' ? 16 : nd.role === 'hub' ? 18 : 10;
+      const r = nd.role === 'gateway' ? 16 : nd.role === 'hub' ? 18 : nd.role === 'relay' ? 9 : 8;
       const cls = `mm-node ${nd.role}${sel === nd.key ? ' sel' : ''}`;
       const glyph = nd.role === 'gateway' ? `<text class="mm-gly" x="${nd.x.toFixed(1)}" y="${(nd.y + 4).toFixed(1)}" text-anchor="middle">⌂</text>` : '';
-      const label = `<text class="mm-label" x="${nd.x.toFixed(1)}" y="${(nd.y + r + 14).toFixed(1)}" text-anchor="middle">${esc(nd.role === 'gateway' ? t('ui.gateway') : nd.name)}</text>`;
+      const named = nd.role === 'gateway' || nd.role === 'hub';
+      const label = named ? `<text class="mm-label" x="${nd.x.toFixed(1)}" y="${(nd.y + r + 14).toFixed(1)}" text-anchor="middle">${esc(nd.role === 'gateway' ? t('ui.gateway') : nd.name)}</text>` : '';
       return `<g class="${cls}" data-node="${nd.key}" data-status="${nd.status || 'ok'}" @click="onNode"><circle cx="${nd.x.toFixed(1)}" cy="${nd.y.toFixed(1)}" r="${r}" class="mm-dot"/></g>${glyph}${label}`;
     }).join('');
 
@@ -240,7 +267,7 @@ $.component('mesh-modal', {
           <div class="net-head">
             <div>
               <div class="net-title">${esc(group.name)}</div>
-              <div class="net-subtitle">${LINK_NAMES[group.link.kind] || group.link.kind} · ${t('ui.sensorsCount', { n: sCount })} · ${t('ui.networkHint')}</div>
+              <div class="net-subtitle">${LINK_NAMES[group.link.kind] || group.link.kind} · ${nf(neighbours)} ${t('label.neighbours')} · ${nf(hops)} ${t('label.hops')}</div>
             </div>
             <div class="spacer"></div>
             <button class="modal-close" type="button" @click="close" aria-label="${esc(t('ui.cancel'))}">✕</button>
@@ -254,7 +281,7 @@ $.component('mesh-modal', {
               <button type="button" @click="zoomOut" aria-label="zoom out">−</button>
               <button type="button" @click="resetView" aria-label="reset">⟲</button>
             </div>
-            ${this.inspector(group, sel ? pos[sel] : null)}
+            ${this.inspector(group, sel ? pos[sel] : null, { neighbours, hops })}
           </div>
         </div>
       </div>`;

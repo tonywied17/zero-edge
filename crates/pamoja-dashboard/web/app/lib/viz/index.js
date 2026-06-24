@@ -53,6 +53,39 @@ export function isDiscrete(r)
 }
 
 /**
+ * Whether a sensor entry is a node or network stat (the device flags it), not a measurement.
+ *
+ * @param {object} s - the sensor entry.
+ * @returns {boolean} `true` for a node stat.
+ */
+export const isStat = (s) => !!(s.reading && s.reading.stat);
+
+/**
+ * Whether a sensor entry is the mesh-map tile (the topology view), not a sensor.
+ *
+ * @param {object} s - the sensor entry.
+ * @returns {boolean} `true` for the mesh-map entry.
+ */
+export const isMeshMap = (s) => vizFor(s.reading.key, s.reading.unit) === 'mesh';
+
+/**
+ * A group's real sensors: its entries minus node stats and the mesh-map tile. This is what
+ * every "N sensors" count and per-sensor visualization should use.
+ *
+ * @param {object} g - the group.
+ * @returns {Array} the real sensor entries.
+ */
+export const realSensors = (g) => (g.sensors || []).filter((s) => !isStat(s) && !isMeshMap(s));
+
+/**
+ * A group's node stats, in declaration order.
+ *
+ * @param {object} g - the group.
+ * @returns {Array} the stat entries.
+ */
+export const groupStats = (g) => (g.sensors || []).filter(isStat);
+
+/**
  * Renders the chosen visualization for a sensor, sized by `big`.
  *
  * @param {object} s - the sensor, carrying `reading`, `history`, and `id`.

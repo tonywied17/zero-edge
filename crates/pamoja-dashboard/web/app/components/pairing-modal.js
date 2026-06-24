@@ -11,7 +11,7 @@ import { pair } from '../lib/pair.js';
 import { esc } from '../lib/viz/index.js';
 
 $.component('pairing-modal', {
-  state: { code: '', error: null, busy: false },
+  state: { code: '', error: null, busy: false, remember: false },
 
   /** Resets the form whenever the dialog opens or closes. */
   mounted() { this._un = store.subscribe(() => this.sync()); },
@@ -21,9 +21,12 @@ $.component('pairing-modal', {
   /** Clears the form when the dialog is not open, then re-renders. */
   sync()
   {
-    if (!store.state.pairing) { this.state.code = ''; this.state.error = null; this.state.busy = false; }
+    if (!store.state.pairing) { this.state.code = ''; this.state.error = null; this.state.busy = false; this.state.remember = false; }
     this.setState({});
   },
+
+  /** Toggles whether this device is trusted (the session persists across restarts). */
+  toggleRemember() { this.state.remember = !this.state.remember; this.setState({}); },
 
   /** Closes the dialog by unwinding one history entry. */
   cancel() { back(); },
@@ -42,7 +45,7 @@ $.component('pairing-modal', {
     this.state.busy = true;
     this.state.error = null;
     this.setState({});
-    const result = await pair(this.state.code);
+    const result = await pair(this.state.code, this.state.remember);
     if (result.ok) { back(); return; }
     this.state.error = result.error === 'auth.unreachable' ? t('ui.pairOffline') : t('ui.pairFailed');
     this.state.busy = false;
@@ -69,6 +72,10 @@ $.component('pairing-modal', {
             <p class="form-hint">${esc(t('ui.pairHint'))}</p>
             <label class="field"><span>${t('ui.pairCode')}</span>
               <input class="field-input pair-code" type="text" autocomplete="off" spellcheck="false" z-model="code" placeholder="0000-0000" /></label>
+            <label class="check-row">
+              <input type="checkbox" class="check-box" ${s.remember ? 'checked' : ''} @click="toggleRemember" />
+              <span>${esc(t('ui.trustDevice'))}</span>
+            </label>
             ${s.error ? `<p class="form-error">${esc(s.error)}</p>` : ''}
           </div>
           <div class="form-actions">

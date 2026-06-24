@@ -57,6 +57,7 @@ Fields:
 - `trend: Option <Trend>` - Which way the reading is moving, if known.
 - `state: Option <String>` - A discrete state code for a non-numeric reading, such as `"state.open"` for a valve or `"pump.nominal"` for a pump, which the page renders as a labelled chip. Numeric readings leave this `None`.
 - `actions: Option <Vec <String>>` - The discrete actions this reading can be commanded to, such as `["open", "closed"]` for a valve. Present only on a controllable actuator; a read-only sensor leaves this `None`, and the page shows control only when it is set.
+- `stat: bool` - Whether this is a node or network stat (neighbours, hops, link or relay status, a tamper-log record count) rather than a measurement of the world. The page counts and renders stats apart from sensors. Defaults `false`.
 
 ### `Reading::new`
 
@@ -155,6 +156,19 @@ The reading, for chaining.
 
 ```rust
 fn with_actions(mut self, actions: impl IntoIterator <Item = impl Into <String>>) -> Self
+```
+
+### `Reading::as_stat`
+
+Marks the reading as a node or network stat rather than a measurement, so the page
+counts and renders it apart from sensors.
+
+**Returns**
+
+The reading, for chaining.
+
+```rust
+fn as_stat(mut self) -> Self
 ```
 
 ## enum `EventLevel`

@@ -8,7 +8,9 @@
 // neither forge a command nor replay a captured one.
 //
 // The derived key and counter live in sessionStorage (per tab); a refresh keeps the
-// unlocked session, closing the tab drops it.
+// unlocked session, closing the tab drops it. "Trust this device" instead persists the
+// session in localStorage, so it survives a browser restart (until the device's session
+// expires). The pairing code is never stored either way.
 
 import { hkdfSha256 } from './crypto/hkdf.js';
 import { hmacSha256 } from './crypto/hmac.js';
@@ -25,13 +27,14 @@ export const unlocked = $.signal(session() != null);
 
 function session()
 {
-  try { return JSON.parse(sessionStorage.getItem(STORE_KEY)); } catch { return null; }
+  try { return JSON.parse(localStorage.getItem(STORE_KEY) || sessionStorage.getItem(STORE_KEY)); } catch { return null; }
 }
 
 function save(s)
 {
-  if (s) sessionStorage.setItem(STORE_KEY, JSON.stringify(s));
-  else sessionStorage.removeItem(STORE_KEY);
+  sessionStorage.removeItem(STORE_KEY);
+  localStorage.removeItem(STORE_KEY);
+  if (s) (s.remember ? localStorage : sessionStorage).setItem(STORE_KEY, JSON.stringify(s));
   unlocked.value = s != null;
 }
 
@@ -45,9 +48,10 @@ const normalize = (code) => code.toLowerCase().replace(/[^0-9a-f]/g, '');
  * Pairs this tab with the device using a pairing code.
  *
  * @param {string} code - the pairing code shown by the device (separators are ignored).
+ * @param {boolean} [remember] - persist the session across browser restarts (trust device).
  * @returns {Promise<{ok: boolean, error?: string}>} success, or a stable error code.
  */
-export async function pair(code)
+export async function pair(code, remember)
 {
   const secret = normalize(code);
   if (!secret) return { ok: false, error: 'auth.bad_mac' };
@@ -67,7 +71,7 @@ export async function pair(code)
     const body = await res.json().catch(() => ({}));
     return { ok: false, error: body.error || 'auth.bad_mac' };
   }
-  save({ sessionId: challenge.sessionId, key: toHex(key), counter: 0 });
+  save({ sessionId: challenge.sessionId, key: toHex(key), counter: 0, remember: !!remember });
   return { ok: true };
 }
 

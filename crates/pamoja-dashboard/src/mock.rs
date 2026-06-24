@@ -382,6 +382,12 @@ fn find_sensor<'a>(state: &'a State, target: &str) -> Option<&'a Sensor> {
         .find(|sensor| sensor.id == sensor_id)
 }
 
+// Marks a sensor as a node or network stat rather than a real measurement.
+fn stat(mut sensor: Sensor) -> Sensor {
+    sensor.reading.stat = true;
+    sensor
+}
+
 // Maps a reading key to a stable, localizable event code for an out-of-band reading.
 fn event_for(key: &str) -> String {
     match key {
@@ -724,11 +730,12 @@ impl StateSource for Mock {
             (30.0, 100.0),
             None,
         );
-        let uplink = self.chip_sensor("uplink", "uplink", "state.synced", Status::Ok);
+        let uplink = stat(self.chip_sensor("uplink", "uplink", "state.synced", Status::Ok));
         let tamper = Sensor {
             id: "tamper".to_owned(),
             reading: Reading::new("tamper_log", 1041.0 + self.tick as f32, "record")
-                .with_status(Status::Ok),
+                .with_status(Status::Ok)
+                .as_stat(),
             battery: None,
             mode: Mode::Active,
             history: Vec::new(),
@@ -837,7 +844,7 @@ impl StateSource for Mock {
             (20.0, 100.0),
             Some(if rr_low { 0.14 } else { 0.9 }),
         );
-        let relay = self.chip_sensor("relay", "relay_status", "state.online", Status::Ok);
+        let relay = stat(self.chip_sensor("relay", "relay_status", "state.online", Status::Ok));
         let rr_temp_base = if s == Scenario::SensorFault {
             -127.0
         } else {
@@ -885,10 +892,11 @@ impl StateSource for Mock {
         // Mesh node: a routing peer in the mesh - it draws its neighbour graph with live
         // packets and reports neighbours, hops to the gateway, routing state and traffic.
         let neighbour_mesh = self.mesh_sensor("mesh", 6.0);
-        let neighbours = self.sensor("neigh", "neighbours", "count", 5.0, 0.0, (1.0, 12.0), None);
-        let hops = self.sensor("hops", "hops", "count", 3.0, 0.0, (1.0, 8.0), None);
-        let routing = self.chip_sensor("routing", "routing", "mesh.optimised", Status::Ok);
-        let relayed = self.sensor(
+        let neighbours =
+            stat(self.sensor("neigh", "neighbours", "count", 5.0, 0.0, (1.0, 12.0), None));
+        let hops = stat(self.sensor("hops", "hops", "count", 3.0, 0.0, (1.0, 8.0), None));
+        let routing = stat(self.chip_sensor("routing", "routing", "mesh.optimised", Status::Ok));
+        let relayed = stat(self.sensor(
             "relayed",
             "messages_relayed",
             "count",
@@ -896,7 +904,7 @@ impl StateSource for Mock {
             0.0,
             (0.0, 99999.0),
             None,
-        );
+        ));
         let mesh_node = self.group(
             "mesh-node",
             "Mesh node",
@@ -1023,6 +1031,53 @@ mod tests {
             valve.reading.actions.is_some(),
             "valve advertises its actions, so it is controllable"
         );
+    }
+
+    #[test]
+    fn node_stats_are_flagged_and_measurements_are_not() {
+        let mut fleet = Mock::new(Scenario::Normal);
+        let state = fleet.snapshot();
+        let by_key = |key: &str| {
+            state
+                .orgs
+                .iter()
+                .flat_map(|o| &o.groups)
+                .flat_map(|g| &g.sensors)
+                .find(|s| s.reading.key == key)
+        };
+        for key in [
+            "neighbours",
+            "hops",
+            "routing",
+            "messages_relayed",
+            "relay_status",
+            "uplink",
+            "tamper_log",
+        ] {
+            assert!(
+                by_key(key).is_some_and(|s| s.reading.stat),
+                "{key} is a node stat"
+            );
+        }
+        for key in ["soil_moisture", "battery_level", "acoustic"] {
+            assert!(
+                by_key(key).is_some_and(|s| !s.reading.stat),
+                "{key} is a measurement, not a stat"
+            );
+        }
+        // A pure relay node carries only its mesh map and node stats - no plain sensors.
+        let mesh = state
+            .orgs
+            .iter()
+            .flat_map(|o| &o.groups)
+            .find(|g| g.id == "mesh-node")
+            .expect("mesh node group");
+        let measurements = mesh
+            .sensors
+            .iter()
+            .filter(|s| !s.reading.stat && s.reading.key != "mesh_relay")
+            .count();
+        assert_eq!(measurements, 0, "the mesh node has no plain sensors");
     }
 
     #[test]

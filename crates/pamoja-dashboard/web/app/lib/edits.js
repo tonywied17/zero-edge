@@ -76,12 +76,12 @@ export function makeSensor(groupId, presetId, value)
   // A discrete sensor (valve, uplink) carries a state code instead of a numeric reading.
   if (p.state)
   {
-    return { ...base, reading: { key: p.key, value: p.value || 0, unit: p.unit || 'state', status: 'ok', state: p.state }, history: [] };
+    return { ...base, reading: { key: p.key, value: p.value || 0, unit: p.unit || 'state', status: 'ok', state: p.state, ...(p.stat ? { stat: true } : {}) }, history: [] };
   }
   const v = Number.isFinite(value) ? value : (p.band ? (p.band[0] + p.band[1]) / 2 : (p.value ?? 0));
   return {
     ...base,
-    reading: { key: p.key, value: v, unit: p.unit, status: statusFor(v, p.band), band: p.band, trend: 'steady' },
+    reading: { key: p.key, value: v, unit: p.unit, status: statusFor(v, p.band), band: p.band, trend: 'steady', ...(p.stat ? { stat: true } : {}) },
     history: Array.from({ length: 12 }, () => v),
   };
 }
