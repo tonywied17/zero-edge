@@ -1,7 +1,7 @@
 //! Core abstractions for the pamoja device SDK.
 //!
 //! This crate defines the traits that every capability crate (for example
-//! `pamoja-mqtt`, `pamoja-io-serial`, or `pamoja-ros2`) implements. The
+//! `pamoja-mqtt`, `pamoja-serial`, or `pamoja-ros2`) implements. The
 //! core is protocol-agnostic: it models devices, sensors, actuators, transports,
 //! durable storage, and an event bus, and leaves concrete protocol support to the
 //! capability crates so that an application depends only on what it uses.
