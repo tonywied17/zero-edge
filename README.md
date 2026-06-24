@@ -13,7 +13,7 @@
 
 <a href="https://pamoja.molex.cloud"><img height="34" alt="website" src="https://raw.githubusercontent.com/molexxxx/pamoja/main/.github/badges/btn-website.svg"></a>
 &nbsp;<a href="https://pamoja.molex.cloud/dashboard"><img height="34" alt="dashboard demo" src="https://raw.githubusercontent.com/molexxxx/pamoja/main/.github/badges/btn-dashboard.svg"></a>
-&nbsp;<a href="https://github.com/molexxxx/pamoja/tree/main/docs"><img height="34" alt="API docs" src="https://raw.githubusercontent.com/molexxxx/pamoja/main/.github/badges/btn-docs.svg"></a>
+&nbsp;<a href="https://github.com/molexxxx/pamoja/tree/main/docs#api-reference"><img height="34" alt="API docs" src="https://raw.githubusercontent.com/molexxxx/pamoja/main/.github/badges/btn-docs.svg"></a>
 
 </div>
 
