@@ -10,6 +10,7 @@
 use serde::{Deserialize, Serialize};
 
 use pamoja_power::PowerMode;
+use pamoja_profile::Viz;
 use pamoja_telemetry::{Event, Level};
 
 /// The health of a sensor, group, or the whole fleet, the basis of the glance-first UI.
@@ -68,6 +69,12 @@ pub struct Reading {
     /// The safe band `[low, high]` in the same unit, drawn as the gauge's safe zone.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub band: Option<[f32; 2]>,
+    /// An explicit visualization kind that overrides the page's key/unit heuristic, such
+    /// as `"radial"` or `"bar"`. Set from a profile's [`Viz`](pamoja_profile::Viz) with
+    /// [`with_viz`](Reading::with_viz) so a custom reading is drawn the way its profile
+    /// intends; `None` lets the page pick from the key and unit.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub viz: Option<String>,
     /// Which way the reading is moving, if known.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub trend: Option<Trend>,
@@ -107,6 +114,7 @@ impl Reading {
             unit: unit.into(),
             status: Status::Ok,
             band: None,
+            viz: None,
             trend: None,
             state: None,
             actions: None,
@@ -140,6 +148,23 @@ impl Reading {
     /// The reading, for chaining.
     pub fn with_band(mut self, low: f32, high: f32) -> Self {
         self.band = Some([low, high]);
+        self
+    }
+
+    /// Pins the graphic this reading is drawn with, overriding the page's heuristic.
+    ///
+    /// Use this when a profile declares a custom element with [`Viz`] and you want the
+    /// live reading drawn the same way, regardless of its key and unit.
+    ///
+    /// # Arguments
+    ///
+    /// * `viz` - the graphic to draw the reading with.
+    ///
+    /// # Returns
+    ///
+    /// The reading, for chaining.
+    pub fn with_viz(mut self, viz: Viz) -> Self {
+        self.viz = Some(viz.kind().to_owned());
         self
     }
 

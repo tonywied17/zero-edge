@@ -49,12 +49,17 @@ mod mock;
 #[cfg(feature = "serve")]
 mod auth;
 #[cfg(feature = "serve")]
+mod catalog;
+#[cfg(feature = "serve")]
 mod fleet;
 #[cfg(feature = "serve")]
 mod serve;
 
 pub use assets::Assets;
 pub use command::{Command, CommandError};
+// The presentation vocabulary a profile uses to declare custom dashboard elements, so a
+// gateway can build a catalog and pin a reading's graphic from this one crate.
+pub use pamoja_profile::{ElementSpec, Presentation, Scope, Theme, Viz};
 pub use source::StateSource;
 pub use state::{
     EventLevel, EventRecord, Group, Link, LinkKind, Mode, Org, Reading, Sensor, State, Status,
@@ -66,6 +71,8 @@ pub use mock::{Mock, Scenario};
 
 #[cfg(feature = "serve")]
 pub use auth::{Auth, AuthError, Challenge};
+#[cfg(feature = "serve")]
+pub use catalog::Catalog;
 #[cfg(feature = "serve")]
 pub use fleet::{Fleet, FleetBuilder};
 #[cfg(feature = "serve")]

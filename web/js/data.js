@@ -544,7 +544,8 @@ export const TIERS = [
     headline: 'A node that lives outside',
     items: [
       'Board, sensors, solar panel and battery',
-      'A USB / SD card with the SDK preloaded',
+      'Pre-flashed with the SDK and real-world profiles',
+      'A local dashboard over its own WiFi - any phone, no app',
       'Duty-cycled to run for a season unattended',
     ],
   },

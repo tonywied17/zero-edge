@@ -7,9 +7,10 @@
 // live in app/; feature and helper modules live under app/lib/.
 
 import { store } from './store.js';
-import { initI18n, t } from './lib/i18n.js';
+import { initI18n, t, registerLabels } from './lib/i18n.js';
 import { initNav, back } from './nav.js';
 import { connectFeed, connected, fleet } from './lib/feed.js';
+import { catalog, extendCatalog } from './lib/catalog.js';
 import { initParallax } from './lib/parallax.js';
 import { routes } from './routes.js';
 import './components/top-bar.js';
@@ -22,7 +23,46 @@ import './components/mesh-modal.js';
 import './components/network-view.js';
 import './components/alarm-bar.js';
 
+/**
+ * Tints the page from a catalog theme by setting CSS custom properties on the root.
+ *
+ * @param {{accent?: string, ok?: string, warn?: string, alarm?: string, track?: string}} theme - the theme tokens.
+ * @returns {void}
+ */
+function applyTheme(theme)
+{
+  if (!theme) return;
+  const root = document.documentElement.style;
+  const set = (name, value) => { if (value) root.setProperty(name, value); };
+  set('--cyan', theme.accent);
+  set('--ok', theme.ok);
+  set('--warn', theme.warn);
+  set('--alarm', theme.alarm);
+  set('--track', theme.track);
+}
+
+/**
+ * Best-effort fetch of the device's presentation catalog, folded into the built-in one
+ * before first paint. A static host (or a device with nothing custom) answers no catalog,
+ * and the built-in defaults stand.
+ *
+ * @returns {Promise<void>} resolves once any served catalog has been applied.
+ */
+async function loadCatalog()
+{
+  try
+  {
+    const res = await fetch('/catalog', { cache: 'no-store' });
+    if (!res.ok) return;
+    const served = await res.json();
+    extendCatalog(served);
+    registerLabels(served.sensorPresets);
+    applyTheme(catalog.theme);
+  } catch { /* no device endpoint here; the built-in catalog stands */ }
+}
+
 await initI18n();
+await loadCatalog();
 document.documentElement.dataset.theme = store.state.theme;
 
 const router = $.router({ routes, mode: 'hash', fallback: 'dashboard-page' });

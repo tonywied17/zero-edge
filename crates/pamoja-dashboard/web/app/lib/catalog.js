@@ -21,6 +21,7 @@
  *   linkKinds: string[],
  *   linkSpec: Object<string, {speed: string, lat: number, rssi: number}>,
  *   sitePositions: Object<string, [number, number]>,
+ *   theme: Object<string, string>,
  * }}
  */
 export const catalog = {
@@ -90,6 +91,10 @@ export const catalog = {
     solar: [0.66, 0.78],
     river: [0.36, 0.69],
   },
+
+  // Theme tokens a device/profile may override (accent, status colors, glyph stroke).
+  // Empty by default, so the page keeps its built-in palette until a catalog supplies one.
+  theme: {},
 };
 
 /**
@@ -126,4 +131,46 @@ export function mergeCatalog(partial)
     }
   }
   return catalog;
+}
+
+/**
+ * Folds a device-served catalog into the defaults *additively*: custom presets are
+ * appended (or merged by `id`) onto the built-in ones rather than replacing them, so a
+ * profile's elements appear alongside the standard set. The theme and link maps merge by
+ * key; `linkKinds`, when given, replaces wholesale.
+ *
+ * @param {object} [served] - the catalog a device serves at `GET /catalog`; ignored if falsy.
+ * @returns {object} the updated {@link catalog}.
+ */
+export function extendCatalog(served)
+{
+  if (!isPlainObject(served)) return catalog;
+  if (Array.isArray(served.sensorPresets))
+  {
+    const byId = new Map(catalog.sensorPresets.map((p) => [p.id, p]));
+    for (const p of served.sensorPresets) byId.set(p.id, { ...byId.get(p.id), ...p });
+    catalog.sensorPresets = [...byId.values()];
+  }
+  if (isPlainObject(served.theme)) catalog.theme = { ...catalog.theme, ...served.theme };
+  if (isPlainObject(served.linkSpec)) catalog.linkSpec = { ...catalog.linkSpec, ...served.linkSpec };
+  if (isPlainObject(served.sitePositions)) catalog.sitePositions = { ...catalog.sitePositions, ...served.sitePositions };
+  if (Array.isArray(served.linkKinds)) catalog.linkKinds = served.linkKinds;
+  return catalog;
+}
+
+/**
+ * Whether a sensor preset is offered on a group with the given link kind. Honors the
+ * declared `scope` (`'always'` or `{ links: [...] }`) and the legacy `meshOnly` flag.
+ *
+ * @param {object} p - the sensor preset.
+ * @param {string} linkKind - the target group's link kind, such as `'mesh'`.
+ * @returns {boolean} `true` when the preset should be offered on that group.
+ */
+export function scopeAllows(p, linkKind)
+{
+  if (p.meshOnly) return linkKind === 'mesh';
+  const scope = p.scope;
+  if (!scope || scope === 'always') return true;
+  if (Array.isArray(scope.links)) return scope.links.includes(linkKind);
+  return true;
 }

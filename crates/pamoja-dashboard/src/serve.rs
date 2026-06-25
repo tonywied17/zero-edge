@@ -31,6 +31,7 @@ use serde::Deserialize;
 
 use crate::assets::Assets;
 use crate::auth::Auth;
+use crate::catalog::Catalog;
 use crate::command::Command;
 use crate::source::StateSource;
 
@@ -122,6 +123,7 @@ pub struct Server<S> {
     assets: Assets,
     push_interval: Duration,
     auth: Arc<Auth>,
+    catalog: Option<Arc<String>>,
 }
 
 impl<S: StateSource + Send + 'static> Server<S> {
@@ -147,7 +149,31 @@ impl<S: StateSource + Send + 'static> Server<S> {
             assets,
             push_interval: Duration::from_secs(1),
             auth: Arc::new(Auth::new(Auth::generate_secret())),
+            catalog: None,
         }
+    }
+
+    /// Serves a presentation [`Catalog`] at `GET /catalog` so the page can show the
+    /// deployment's custom sensors, stats, and theme.
+    ///
+    /// Build the catalog from the profiles the deployment runs with
+    /// [`Catalog::from_profiles`]. A catalog with nothing custom is not worth serving;
+    /// skip this call and the page keeps its built-in defaults.
+    ///
+    /// # Arguments
+    ///
+    /// * `catalog` - the presentation catalog to serve.
+    ///
+    /// # Returns
+    ///
+    /// The server, for chaining.
+    pub fn with_catalog(mut self, catalog: Catalog) -> Self {
+        self.catalog = catalog
+            .to_json()
+            .ok()
+            .filter(|_| !catalog.is_empty())
+            .map(Arc::new);
+        self
     }
 
     /// Sets the pairing secret a client must know to issue commands.
@@ -227,8 +253,9 @@ impl<S: StateSource + Send + 'static> Server<S> {
             let assets = self.assets.clone();
             let interval = self.push_interval;
             let auth = Arc::clone(&self.auth);
+            let catalog = self.catalog.clone();
             thread::spawn(move || {
-                let _ = handle(conn, source, assets, interval, auth);
+                let _ = handle(conn, source, assets, interval, auth, catalog);
             });
         }
     }
@@ -269,6 +296,7 @@ fn handle<S: StateSource, C: Read + Write>(
     assets: Assets,
     interval: Duration,
     auth: Arc<Auth>,
+    catalog: Option<Arc<String>>,
 ) -> std::io::Result<()> {
     let request = match read_request(&mut conn)? {
         Some(request) => request,
@@ -293,6 +321,16 @@ fn handle<S: StateSource, C: Read + Write>(
                 json.as_bytes(),
             )
         }
+        ("GET", "/catalog") => match &catalog {
+            Some(json) => write_json(&mut conn, 200, "OK", json),
+            None => write_response(
+                &mut conn,
+                204,
+                "No Content",
+                "application/json; charset=utf-8",
+                b"",
+            ),
+        },
         ("GET", "/events") => stream_events(&mut conn, &source, interval),
         ("GET", "/pair/challenge") => {
             let challenge = auth.challenge();
@@ -567,6 +605,7 @@ mod tests {
             Assets::Embedded,
             Duration::from_millis(0),
             auth,
+            None,
         )
         .expect("handled");
         String::from_utf8_lossy(&conn.output).into_owned()
@@ -584,6 +623,7 @@ mod tests {
             Assets::Embedded,
             Duration::from_millis(0),
             Arc::new(Auth::new("secret")),
+            None,
         )
         .expect("handled");
         let written = String::from_utf8_lossy(&conn.output);
@@ -595,6 +635,40 @@ mod tests {
     fn an_unknown_path_is_a_404() {
         let written = handle_request(b"GET /nope HTTP/1.1\r\n\r\n", Arc::new(Auth::new("secret")));
         assert!(written.contains("404 Not Found"));
+    }
+
+    #[test]
+    fn a_get_catalog_serves_the_presentation_catalog_when_one_is_set() {
+        use pamoja_profile::{ElementSpec, Presentation, Profile, Viz};
+
+        let profile = Profile::well_level().with_presentation(Presentation::new().with_element(
+            ElementSpec::new("water_turbidity", "ntu", "Turbidity", Viz::Gauge).with_band(0.0, 5.0),
+        ));
+        let catalog = Catalog::from_profiles(&[&profile])
+            .to_json()
+            .expect("serialize catalog");
+
+        let mut conn = MemConn::new(b"GET /catalog HTTP/1.1\r\n\r\n");
+        handle(
+            &mut conn,
+            Arc::new(Mutex::new(Mock::new(Scenario::Normal))),
+            Assets::Embedded,
+            Duration::from_millis(0),
+            Arc::new(Auth::new("s")),
+            Some(Arc::new(catalog)),
+        )
+        .expect("handled");
+
+        let written = String::from_utf8_lossy(&conn.output);
+        assert!(written.contains("200 OK"));
+        assert!(written.contains("water_turbidity"));
+        assert!(written.contains("\"viz\":\"radial\""));
+    }
+
+    #[test]
+    fn a_get_catalog_is_no_content_without_a_catalog() {
+        let written = handle_request(b"GET /catalog HTTP/1.1\r\n\r\n", Arc::new(Auth::new("s")));
+        assert!(written.contains("204 No Content"));
     }
 
     #[test]
@@ -653,6 +727,7 @@ mod tests {
             Assets::Embedded,
             Duration::from_millis(0),
             Arc::new(Auth::new("secret")),
+            None,
         )
         .expect("handled");
 

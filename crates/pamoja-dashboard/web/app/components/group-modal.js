@@ -11,7 +11,7 @@ import { store } from '../store.js';
 import { currentFleet } from '../lib/edits.js';
 import { open, back } from '../nav.js';
 import { t, nf, fmt } from '../lib/i18n.js';
-import { conn, tileViz, trendArrow, isDiscrete, realSensors, meshPeerCount, vizFor, esc } from '../lib/viz/index.js';
+import { conn, tileViz, trendArrow, isDiscrete, realSensors, meshPeerCount, vizOf, esc } from '../lib/viz/index.js';
 import { openMeshOverlay } from './mesh-modal.js';
 
 // Sensors shown per page in the group view before it paginates.
@@ -80,7 +80,7 @@ $.component('group-modal', {
     const el = e.target.closest('[data-sid]'); if (!el) return;
     const sid = el.dataset.sid;
     const s = this.sensorBySid(sid);
-    if (s && vizFor(s.reading.key, s.reading.unit) === 'mesh') { openMeshOverlay(sid); return; }
+    if (s && vizOf(s.reading) === 'mesh') { openMeshOverlay(sid); return; }
     open(() => store.dispatch('selectSensor', sid), () => store.dispatch('closeSensor'));
   },
   /**
@@ -107,8 +107,8 @@ $.component('group-modal', {
   card(group, s)
   {
     const r = s.reading;
-    const vk = vizFor(r.key, r.unit);
-    const span = vk === 'chain' || vk === 'wave' || vk === 'mesh' ? ' span' : '';
+    const vk = vizOf(r);
+    const span = vk === 'chain' || vk === 'wave' || vk === 'mesh' || r.span ? ' span' : '';
     const head = `<div class="gv-top"><span class="gv-label">${esc(t('label.' + r.key))}</span><span class="pill" data-status="${r.status}">${t('status.' + r.status)}</span></div>`;
     if (isDiscrete(r))
     {

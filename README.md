@@ -76,7 +76,7 @@ today.
 | [`pamoja-coap`](crates/pamoja-coap/README.md) | messaging | A CoAP client over UDP with confirmable and non-confirmable delivery and RFC 7641 observe. |
 | [`pamoja-ladder`](crates/pamoja-ladder/README.md) | resilience | A cost-aware transport ladder: cheapest reachable rung first, buffering to a `Store` when every link is down. |
 | [`pamoja-sync`](crates/pamoja-sync/README.md) | resilience | Offline-first store-and-forward queues: in-memory, plus a crash-safe on-disk queue that survives power loss. |
-| [`pamoja-dashboard`](crates/pamoja-dashboard/README.md) | resilience | A local-first fleet dashboard a node serves over its own hotspot - multilingual and fully offline, with a hardware-free mock for development - so a community can see its own data with no cloud. |
+| [`pamoja-dashboard`](crates/pamoja-dashboard/README.md) | resilience | A local-first fleet dashboard a node serves over its own hotspot - multilingual and fully offline, with a hardware-free mock for development - so a community can see its own data with no cloud; profiles can declare custom sensors, node stats, and a theme the page renders with no code change. |
 | [`pamoja-bus`](crates/pamoja-bus/README.md) | core | An in-memory typed publish/subscribe event bus implementing the core `EventBus` trait. |
 | [`pamoja-loopback`](crates/pamoja-loopback/README.md) | testing | An in-process `Transport` with topic matching and a fault injector, exercising the full path with no broker. |
 | [`pamoja-sim`](crates/pamoja-sim/README.md) | testing | Hardware-free simulators: noisy and replay sensors, a recording actuator, a degraded-link transport, and a simulated robot that turns velocity commands into a dead-reckoned pose. |
@@ -204,7 +204,7 @@ Messaging and radio. MQTT and CoAP work today, behind a cost-aware transport lad
 
 Hardware and sensors. Serial (SLIP/COBS), CAN with J1939, RS485/Modbus, and on-board GPIO/I2C/SPI ship today for field wiring, alongside datasheet-anchored decoders for common, salvageable parts (BME280, DS18B20, INA219, ADS1115) and actuator drivers (PCA9685 PWM/servo, stepper). You can also instantiate a node by name with a device profile (an irrigation node, a well-level monitor) instead of wiring pins. Next: a broader driver catalog.
 
-Resilience and power. Offline-first store-and-forward, energy-aware duty cycling for solar and battery, and a local-first dashboard a node serves over its own hotspot - multilingual, fully offline, with a hardware-free mock - all work today; next is data-mule sync for places with no link at all.
+Resilience and power. Offline-first store-and-forward, energy-aware duty cycling for solar and battery, and a local-first dashboard a node serves over its own hotspot - multilingual, fully offline, with a hardware-free mock - all work today. The dashboard now also renders custom sensors and node stats a profile declares, and reaches any phone over the gateway's own WiFi while the radio mesh carries the data behind it - the shape of a pre-flashed field kit. Next is data-mule sync for places with no link at all.
 
 Robotics and drones. A ROS 2 bridge - topics, services, and actions - over a Zenoh transport ships today, interoperating with rmw_zenoh, routerless; the kit adds wheel kinematics, odometry, waypoint guidance, motion safety, and arm forward/inverse kinematics, and a simulated robot exercises it all with no hardware. MAVLink for drones is next, modeled as ordinary pamoja devices.
 

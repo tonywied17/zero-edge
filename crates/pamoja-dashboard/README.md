@@ -32,6 +32,21 @@ Anything that implements `StateSource` can drive the dashboard. Two do:
   `mock` feature (on by default).
 - **`Fleet`** - the real source a project fills. This is what you use on a real device.
 
+## How it reaches a phone over a radio mesh
+
+A phone's browser needs an IP link to load the page, and a long-range radio mesh (LoRa,
+Meshtastic) is not IP. So the gateway bridges the two: it serves the dashboard over its own WiFi
+access point - what the phone connects to, with no internet and no app to install - while the
+mesh or LoRa link is the **backhaul** that fills the fleet. Field readings arrive over the radio,
+the project's sampling loop pushes them into the `Fleet`, and the page renders them; the radio
+never carries the page itself.
+
+That split is why a two-dollar microcontroller can host this. The page is served once over the
+local hotspot (gzip-encoded, well under 150 KB); only the small `State` snapshot moves after
+that. The HTTP/1.1 server runs over a pluggable byte transport (plain TCP today), so a capable
+tier can later supply a TLS transport and the browser upgrades to HTTPS - and with it HTTP/2 -
+without touching the request logic.
+
 ## Using it with your project
 
 A real project owns its own sensing (it ticks its profiles/sensors on their power schedule)
@@ -85,6 +100,39 @@ It also shows the gaps a real deployment fills: an added sensor carries an optio
 **binding** (`i2c:0x76`, `gpio:4`, `lora:ab12`) for the gateway to bind a driver;
 `Fleet::add_sensor`/`add_group` surface a node the moment it is discovered; and
 `Fleet::from_state` + `State::from_json` restore a fleet across restarts.
+
+## Custom sensors and node stats (profile-driven)
+
+The page draws a built-in set of sensor types out of the box. When a deployment measures
+something beyond that set, the profile declares it - no page change. A `pamoja-profile` `Profile`
+carries a `Presentation` of `ElementSpec`s: each names a stable key and unit, the graphic to draw
+it with (`Viz` - a gauge, bar, dial, sparkline, switch, valve, and so on), its safe band, a
+label, and which groups it is offered on (`Scope`). The gateway turns those into the catalog it
+serves:
+
+```rust
+use pamoja_dashboard::{Assets, Catalog, ElementSpec, Presentation, Scope, Server, Viz};
+use pamoja_profile::Profile;
+
+let profile = Profile::well_level().with_presentation(
+    Presentation::new().with_element(
+        ElementSpec::new("water_turbidity", "ntu", "Turbidity", Viz::Gauge)
+            .with_band(0.0, 5.0)
+            .on(Scope::Links(vec!["mesh".into()])),
+    ),
+);
+
+Server::new(fleet, Assets::Embedded)
+    .with_catalog(Catalog::from_profiles(&[&profile]))
+    .run("0.0.0.0:80").unwrap();
+```
+
+The page fetches `GET /catalog` on boot and folds the custom presets in beside its own, so the
+add-sensor dialog offers them (only on the groups their scope allows) and renders each with the
+chosen graphic and label. A live reading can also pin its own graphic -
+`Reading::new(...).with_viz(Viz::Gauge)` - so a value flows straight into the instrument the
+profile intends. A small `Theme` on the presentation tints the console (accent and status
+colors). A complete, runnable version is in [`examples/gateway.rs`](examples/gateway.rs).
 
 ## Authenticated control
 

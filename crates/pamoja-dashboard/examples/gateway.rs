@@ -14,10 +14,28 @@ use std::thread;
 use std::time::Duration;
 
 use pamoja_dashboard::{
-    Assets, Auth, Command, Fleet, LinkKind, Reading, Sensor, Server, State, StateSource, Status,
-    Trend,
+    Assets, Auth, Catalog, Command, ElementSpec, Fleet, LinkKind, Presentation, Reading, Scope,
+    Sensor, Server, State, StateSource, Status, Trend, Viz,
 };
 use pamoja_profile::{Alert, Profile};
+
+// The profile this gateway runs: an irrigation controller, plus a dashboard presentation that
+// teaches the page two elements it would not draw by default - a turbidity gauge and a
+// dropped-packet node stat. The page fetches these from `GET /catalog` and renders them.
+fn profile() -> Profile {
+    Profile::irrigation_node().with_presentation(
+        Presentation::new()
+            .with_element(
+                ElementSpec::new("water_turbidity", "ntu", "Turbidity", Viz::Gauge)
+                    .with_band(0.0, 5.0),
+            )
+            .with_element(
+                ElementSpec::new("packets_dropped", "count", "Packets dropped", Viz::Count)
+                    .as_stat()
+                    .on(Scope::Links(vec!["lora".to_owned(), "mesh".to_owned()])),
+            ),
+    )
+}
 
 // Where this example persists its fleet, so provisioning and the last valve state survive a
 // restart. A real gateway uses its own durable storage.
@@ -52,6 +70,17 @@ fn build_fleet() -> Fleet {
                     .with_actions(["open", "closed"]),
             ),
         )
+        // A custom element from the profile's presentation: the page draws it as the gauge the
+        // profile chose, with its band and label, because the reading pins the visualization.
+        .sensor(
+            "field",
+            Sensor::new(
+                "turbidity",
+                Reading::new("water_turbidity", 2.4, "ntu")
+                    .with_band(0.0, 5.0)
+                    .with_viz(Viz::Gauge),
+            ),
+        )
         .build()
 }
 
@@ -66,15 +95,16 @@ fn main() -> std::process::ExitCode {
         .nth(1)
         .unwrap_or_else(|| "127.0.0.1:8788".to_owned());
 
+    let prof = profile();
     let fleet = build_fleet();
 
     // The sampling loop. A real project ticks its profile here on the power schedule; this
     // drifts a stand-in soil reading, judges it with the profile's controller, surfaces a
     // discovered node, and applies any control command the dashboard queued.
     let mut worker = fleet.clone();
+    let worker_profile = prof.clone();
     thread::spawn(move || {
-        let profile = Profile::irrigation_node();
-        let mut control = profile.controller();
+        let mut control = worker_profile.controller();
         let mut tick = 0.0f32;
         let mut step = 0u32;
         loop {
@@ -93,6 +123,21 @@ fn main() -> std::process::ExitCode {
                     .with_band(40.0, 80.0)
                     .with_status(status)
                     .with_trend(Trend::Steady),
+            );
+
+            // Drift the custom turbidity probe so its gauge moves; clear water sits low.
+            let turbidity = 2.4 + 1.6 * (tick * 0.7).sin();
+            worker.report_reading(
+                "field",
+                "turbidity",
+                Reading::new("water_turbidity", turbidity, "ntu")
+                    .with_band(0.0, 5.0)
+                    .with_viz(Viz::Gauge)
+                    .with_status(if turbidity > 4.5 {
+                        Status::Warn
+                    } else {
+                        Status::Ok
+                    }),
             );
 
             // Discovery: a humidity node joins after a few cycles; it appears in the dashboard.
@@ -142,6 +187,7 @@ fn main() -> std::process::ExitCode {
     println!("gateway: serving on http://{addr}");
     match Server::new(fleet, Assets::Embedded)
         .with_pairing_secret(secret)
+        .with_catalog(Catalog::from_profiles(&[&prof]))
         .run(&addr)
     {
         Ok(()) => std::process::ExitCode::SUCCESS,

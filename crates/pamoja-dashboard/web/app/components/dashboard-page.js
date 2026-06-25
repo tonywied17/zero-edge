@@ -12,7 +12,7 @@ import { t, nf, fmt } from '../lib/i18n.js';
 import { currentFleet, provision, hasLocalEdits } from '../lib/edits.js';
 import { live } from '../lib/feed.js';
 import { unlocked, promptUnlock } from '../lib/pair.js';
-import { conn, tileViz, bannerRing, trendArrow, isDiscrete, isStat, realSensors, groupStats, meshPeerCount, vizFor, esc } from '../lib/viz/index.js';
+import { conn, tileViz, bannerRing, trendArrow, isDiscrete, isStat, realSensors, groupStats, meshPeerCount, vizOf, isWide, esc } from '../lib/viz/index.js';
 import { openMeshOverlay } from './mesh-modal.js';
 
 const ICON_EDIT = '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19.5l-4 1 1-4z"/></svg>';
@@ -58,7 +58,7 @@ function isMeshSensor(sid)
   for (const o of f.orgs) for (const g of o.groups) if (g.id === gid)
   {
     const s = g.sensors.find((x) => x.id === sd);
-    return !!s && vizFor(s.reading.key, s.reading.unit) === 'mesh';
+    return !!s && vizOf(s.reading) === 'mesh';
   }
   return false;
 }
@@ -429,8 +429,8 @@ $.component('dashboard-page', {
     const readout = isDiscrete(r)
       ? ''
       : `<div><span class="sval">${fmt(r.value)}</span><span class="sunit">${t('unit.' + r.unit)}</span>${r.trend ? `<span class="strend" data-dir="${r.trend}">${trendArrow(r.trend)}</span>` : ''}</div>`;
-    const vk = vizFor(r.key, r.unit);
-    const span = vk === 'spark' || vk === 'chain' || vk === 'wave' || vk === 'mesh' ? ' span' : '';
+    const vk = vizOf(r);
+    const span = isWide(r) ? ' span' : '';
     const nodes = vk === 'mesh' ? meshPeerCount(g) : undefined;
     return `
       <article class="stile${span} ${store.state.selected === sid ? 'open' : ''}" data-status="${r.status}" data-sid="${sid}" z-key="${s.id}" @click="onSensor" tabindex="0" role="button"${editing ? ' draggable="true"' : ''}>

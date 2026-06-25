@@ -90,6 +90,31 @@ const EMBEDDED: &[Asset] = &[
         bytes: include_bytes!("../web/app/lib/i18n.js"),
     },
     Asset {
+        path: "/app/lib/pair.js",
+        content_type: JS,
+        bytes: include_bytes!("../web/app/lib/pair.js"),
+    },
+    Asset {
+        path: "/app/lib/crypto/bytes.js",
+        content_type: JS,
+        bytes: include_bytes!("../web/app/lib/crypto/bytes.js"),
+    },
+    Asset {
+        path: "/app/lib/crypto/sha256.js",
+        content_type: JS,
+        bytes: include_bytes!("../web/app/lib/crypto/sha256.js"),
+    },
+    Asset {
+        path: "/app/lib/crypto/hmac.js",
+        content_type: JS,
+        bytes: include_bytes!("../web/app/lib/crypto/hmac.js"),
+    },
+    Asset {
+        path: "/app/lib/crypto/hkdf.js",
+        content_type: JS,
+        bytes: include_bytes!("../web/app/lib/crypto/hkdf.js"),
+    },
+    Asset {
         path: "/app/lib/viz/index.js",
         content_type: JS,
         bytes: include_bytes!("../web/app/lib/viz/index.js"),
@@ -133,6 +158,11 @@ const EMBEDDED: &[Asset] = &[
         path: "/app/components/sensor-modal.js",
         content_type: JS,
         bytes: include_bytes!("../web/app/components/sensor-modal.js"),
+    },
+    Asset {
+        path: "/app/components/pairing-modal.js",
+        content_type: JS,
+        bytes: include_bytes!("../web/app/components/pairing-modal.js"),
     },
     Asset {
         path: "/app/components/manage-modal.js",
@@ -285,6 +315,22 @@ mod tests {
         assert!(Assets::Embedded.get("/app/lib/feed.js").is_some());
         assert!(Assets::Embedded.get("/app/lib/catalog.js").is_some());
         assert!(Assets::Embedded.get("/app/lib/viz/index.js").is_some());
+    }
+
+    #[test]
+    fn embedded_serves_the_pairing_and_crypto_modules() {
+        // app.js imports these unconditionally (pairing/control and its pure-JS crypto); a
+        // missing one 404s and the page never mounts, so the embedded bundle must carry them.
+        for path in [
+            "/app/components/pairing-modal.js",
+            "/app/lib/pair.js",
+            "/app/lib/crypto/bytes.js",
+            "/app/lib/crypto/sha256.js",
+            "/app/lib/crypto/hmac.js",
+            "/app/lib/crypto/hkdf.js",
+        ] {
+            assert!(Assets::Embedded.get(path).is_some(), "missing {path}");
+        }
     }
 
     #[test]

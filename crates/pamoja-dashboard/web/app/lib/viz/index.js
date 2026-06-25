@@ -6,6 +6,7 @@
 // library. The per-kind builders live alongside in gauges/glyphs/charts/links.
 
 import { nf, fmt, t } from '../i18n.js';
+import { catalog } from '../catalog.js';
 import { esc, statusColor, trendArrow } from './util.js';
 import { LINK_NAMES, LINK_COLORS, LINK_RSSI, bars, conn } from './links.js';
 import { miniSpark, detailGraph, bannerRing, bigBars } from './charts.js';
@@ -40,15 +41,56 @@ export function vizFor(key, unit)
   return 'spark';
 }
 
+/** The visualization kinds the renderer can draw, for validating an explicit choice. */
+const KNOWN_KINDS = new Set([
+  'spark', 'radial', 'dial', 'bar', 'therm', 'droplet', 'battery', 'wind', 'sun',
+  'wave', 'chip', 'valve', 'chain', 'mesh', 'count',
+]);
+
+/** The visualization kinds that read best spanning two columns. */
+const WIDE_KINDS = new Set(['spark', 'chain', 'wave', 'mesh']);
+
+/**
+ * Picks the visualization kind for a reading, honoring an explicit choice before the
+ * heuristic: the reading's own `viz`, else the catalog preset declared for its key, else
+ * {@link vizFor} from the key and unit.
+ *
+ * @param {{key: string, unit: string, viz?: string}} r - the reading.
+ * @returns {string} the visualization kind.
+ */
+export function vizOf(r)
+{
+  if (!r) return 'spark';
+  if (r.viz && KNOWN_KINDS.has(r.viz)) return r.viz;
+  const preset = catalog.sensorPresets.find((p) => p.key === r.key && p.viz);
+  if (preset && KNOWN_KINDS.has(preset.viz)) return preset.viz;
+  return vizFor(r.key, r.unit);
+}
+
+/**
+ * Whether a reading's tile should span two columns: a wide visualization kind, or a
+ * `span` flag on the reading or its catalog preset.
+ *
+ * @param {object} r - the reading.
+ * @returns {boolean} `true` for a wide tile.
+ */
+export function isWide(r)
+{
+  if (r && r.span) return true;
+  const preset = r && catalog.sensorPresets.find((p) => p.key === r.key);
+  if (preset && preset.span) return true;
+  return WIDE_KINDS.has(vizOf(r));
+}
+
 /**
  * Reports whether a reading uses a discrete glyph rather than a numeric gauge.
  *
- * @param {{key: string, unit: string}} r - the reading.
+ * @param {{key: string, unit: string, viz?: string}} r - the reading.
  * @returns {boolean} `true` for chip/valve/chain/mesh/count/wave visualizations.
  */
 export function isDiscrete(r)
 {
-  const k = vizFor(r.key, r.unit);
+  const k = vizOf(r);
   return k === 'chip' || k === 'valve' || k === 'chain' || k === 'mesh' || k === 'count' || k === 'wave';
 }
 
@@ -66,7 +108,7 @@ export const isStat = (s) => !!(s.reading && s.reading.stat);
  * @param {object} s - the sensor entry.
  * @returns {boolean} `true` for the mesh-map entry.
  */
-export const isMeshMap = (s) => vizFor(s.reading.key, s.reading.unit) === 'mesh';
+export const isMeshMap = (s) => vizOf(s.reading) === 'mesh';
 
 /**
  * A group's real sensors: its entries minus node stats and the mesh-map tile. This is what
@@ -135,7 +177,7 @@ export function tileViz(s, big = false, nodes)
 {
   const r = s.reading;
   const uid = (big ? 'b' : 't') + (s.id || r.key).replace(/[^a-z0-9]/gi, '');
-  const vk = vizFor(r.key, r.unit);
+  const vk = vizOf(r);
   let inner, full = false, disc = false;
   switch (vk)
   {

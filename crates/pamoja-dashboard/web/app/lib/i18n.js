@@ -17,6 +17,11 @@ export const LOCALES = ['en', 'sw', 'ar', 'fr', 'pt', 'hi'];
 const bundles = {};
 let fallback;
 
+// Labels a device-served catalog supplies for its custom elements, so a profile can name a
+// sensor the shipped bundles never carried. Keyed by locale (`'en'`, `'sw'`, ...) plus `'*'`
+// for a single non-localized fallback. Shipped bundles still win; these only fill gaps.
+const labelExtra = {};
+
 /**
  * Loads and caches a locale's JSON bundle, resolved relative to this module so it works
  * on a device and under any base path on a static host.
@@ -58,6 +63,26 @@ export async function setLocale(l)
   await load(l);
   store.dispatch('setLocale', l);
   applyDir();
+}
+
+/**
+ * Registers labels from a device-served catalog so a custom element's `label.<key>`
+ * resolves through {@link t}. A preset's per-locale `labels` register under each locale; a
+ * single `label` registers as the non-localized fallback. Shipped bundles still take
+ * precedence, so this only fills keys the bundles do not define.
+ *
+ * @param {Array<{key: string, label?: string, labels?: Object<string,string>}>} presets - the catalog presets.
+ * @returns {void}
+ */
+export function registerLabels(presets)
+{
+  for (const p of presets || [])
+  {
+    if (!p || !p.key) continue;
+    const mk = 'label.' + p.key;
+    if (p.labels) for (const [loc, text] of Object.entries(p.labels)) (labelExtra[loc] ??= {})[mk] = text;
+    if (p.label) (labelExtra['*'] ??= {})[mk] = p.label;
+  }
 }
 
 /**
@@ -103,6 +128,11 @@ export const t = (k, args = {}) =>
   const b = active();
   let m = b.messages[k];
   if (m == null) m = fallback.messages[k];
+  // A device-served catalog fills labels the bundles never carried (a custom element):
+  // the active locale's label, then English, then the non-localized fallback.
+  if (m == null) m = labelExtra[b.locale]?.[k];
+  if (m == null) m = labelExtra.en?.[k];
+  if (m == null) m = labelExtra['*']?.[k];
   if (m == null) return k;
   if (typeof m === 'object')
   {

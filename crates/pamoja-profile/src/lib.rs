@@ -26,6 +26,13 @@
 //! is async; its decisions are synchronous and hardware-free, so the whole control
 //! policy is unit-testable with no devices and no network.
 //!
+//! A profile may also carry an optional [`Presentation`]: a declaration of the custom
+//! sensors and node stats it introduces to the local-first dashboard - the graphic to
+//! draw each with ([`Viz`]), its band, label, and which groups it is offered on
+//! ([`Scope`]) - plus a small [`Theme`]. The dashboard turns these declarations into the
+//! catalog it serves, so a community can add a sensor we never anticipated (a turbidity
+//! probe, a pH meter) with no code and no page change.
+//!
 //! # Examples
 //!
 //! Assemble a cold-chain monitor's policy and evaluate a reading, no hardware needed:
@@ -47,8 +54,10 @@
 
 mod control;
 mod node;
+mod presentation;
 mod profile;
 
 pub use control::{Alert, Controller, Reaction};
 pub use node::{NoActuator, Node};
+pub use presentation::{ElementSpec, Presentation, Scope, Theme, Viz};
 pub use profile::{ControlSpec, PowerSchedule, Profile};

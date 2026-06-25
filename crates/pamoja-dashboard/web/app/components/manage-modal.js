@@ -9,7 +9,7 @@ import { store } from '../store.js';
 import { back } from '../nav.js';
 import { t } from '../lib/i18n.js';
 import { makeGroup, makeSensor, currentFleet, provision } from '../lib/edits.js';
-import { catalog } from '../lib/catalog.js';
+import { catalog, scopeAllows } from '../lib/catalog.js';
 import { LINK_NAMES, esc } from '../lib/viz/index.js';
 
 $.component('manage-modal', {
@@ -55,15 +55,17 @@ $.component('manage-modal', {
   setKind(k) { this.state.sensorKind = k; },
 
   /**
-   * The sensor presets offered for a target group; mesh-only presets appear only when the
-   * target group is on a mesh link.
+   * The sensor presets offered for a target group, gated by each preset's scope so a
+   * profile's custom element appears only where it applies (and mesh-only presets only on
+   * a mesh link).
    *
    * @param {string} groupId - the target group's id.
    * @returns {Array<object>} the offered presets.
    */
   presetsFor(groupId)
   {
-    return catalog.sensorPresets.filter((p) => !p.meshOnly || this.groupKind(groupId) === 'mesh');
+    const kind = this.groupKind(groupId);
+    return catalog.sensorPresets.filter((p) => scopeAllows(p, kind));
   },
 
   /**

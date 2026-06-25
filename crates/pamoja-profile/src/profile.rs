@@ -10,7 +10,7 @@ use core::time::Duration;
 use pamoja_power::PowerPlan;
 use serde::{Deserialize, Serialize};
 
-use crate::Controller;
+use crate::{Controller, Presentation};
 
 /// How a profile turns each reading into control output and alerts.
 ///
@@ -175,6 +175,11 @@ pub struct Profile {
     pub control: ControlSpec,
     /// The power schedule that sets how often the node samples as the battery drains.
     pub power: PowerSchedule,
+    /// How this profile presents itself on the dashboard - its custom sensors, node
+    /// stats, and theme. A profile that introduces no element beyond the dashboard's
+    /// built-in set leaves this `None`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub presentation: Option<Presentation>,
 }
 
 impl Profile {
@@ -199,6 +204,7 @@ impl Profile {
                 safe_band: 3.0,
             },
             power: PowerSchedule::new(60, 300, 900),
+            presentation: None,
         }
     }
 
@@ -223,6 +229,7 @@ impl Profile {
                 safe_band: 25.0,
             },
             power: PowerSchedule::new(300, 1800, 3600),
+            presentation: None,
         }
     }
 
@@ -244,6 +251,7 @@ impl Profile {
                 warn_within: 6,
             },
             power: PowerSchedule::new(600, 1800, 3600),
+            presentation: None,
         }
     }
 
@@ -277,6 +285,7 @@ impl Profile {
                 limit: 0.3,
             },
             power: PowerSchedule::new(60, 300, 900),
+            presentation: None,
         }
     }
 
@@ -298,6 +307,41 @@ impl Profile {
             ControlSpec::Surge { rising, limit } => Controller::surge(rising, limit),
             ControlSpec::Monitor => Controller::monitor(),
         }
+    }
+
+    /// Attaches a dashboard [`Presentation`] declaring this profile's custom elements.
+    ///
+    /// A profile that measures something the dashboard does not draw out of the box - a
+    /// turbidity probe, a custom node stat - carries the graphic, band, and label for it
+    /// here, so the dashboard offers and renders it with no code.
+    ///
+    /// # Arguments
+    ///
+    /// * `presentation` - how this profile presents itself on the dashboard.
+    ///
+    /// # Returns
+    ///
+    /// The profile, for chaining.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use pamoja_profile::{ElementSpec, Presentation, Profile, Viz};
+    ///
+    /// // A water-monitoring profile that adds a turbidity gauge the dashboard would not
+    /// // otherwise know how to draw.
+    /// let profile = Profile::well_level().with_presentation(
+    ///     Presentation::new().with_element(
+    ///         ElementSpec::new("water_turbidity", "ntu", "Turbidity", Viz::Gauge)
+    ///             .with_band(0.0, 5.0),
+    ///     ),
+    /// );
+    /// let elements = &profile.presentation.unwrap().elements;
+    /// assert_eq!(elements[0].viz.kind(), "radial");
+    /// ```
+    pub fn with_presentation(mut self, presentation: Presentation) -> Self {
+        self.presentation = Some(presentation);
+        self
     }
 }
 
