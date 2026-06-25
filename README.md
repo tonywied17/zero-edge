@@ -70,36 +70,36 @@ today.
 
 | Crate | Area | What it does |
 | --- | --- | --- |
-| [`pamoja-core`](crates/pamoja-core/README.md) | core | The device model: `Transport`, `Device`, `Sensor`, `Actuator`, `Store`, event-bus, and error traits. |
-| [`pamoja-codec`](crates/pamoja-codec/README.md) | serialize | CBOR, JSON, and raw codecs behind one trait, plus delta+varint batch packing and an `f32` quantizer for metered links. |
-| [`pamoja-mqtt`](crates/pamoja-mqtt/README.md) | messaging | An MQTT client implementing the core `Transport` trait, tested against an embedded broker. |
-| [`pamoja-coap`](crates/pamoja-coap/README.md) | messaging | A CoAP client over UDP with confirmable and non-confirmable delivery and RFC 7641 observe. |
-| [`pamoja-ladder`](crates/pamoja-ladder/README.md) | resilience | A cost-aware transport ladder: cheapest reachable rung first, buffering to a `Store` when every link is down. |
-| [`pamoja-sync`](crates/pamoja-sync/README.md) | resilience | Offline-first store-and-forward queues: in-memory, plus a crash-safe on-disk queue that survives power loss. |
-| [`pamoja-dashboard`](crates/pamoja-dashboard/README.md) | resilience | A local-first fleet dashboard a node serves over its own hotspot - multilingual and fully offline, with a hardware-free mock for development - so a community can see its own data with no cloud; profiles can declare custom sensors, node stats, and a theme the page renders with no code change. |
-| [`pamoja-bus`](crates/pamoja-bus/README.md) | core | An in-memory typed publish/subscribe event bus implementing the core `EventBus` trait. |
-| [`pamoja-loopback`](crates/pamoja-loopback/README.md) | testing | An in-process `Transport` with topic matching and a fault injector, exercising the full path with no broker. |
-| [`pamoja-sim`](crates/pamoja-sim/README.md) | testing | Hardware-free simulators: noisy and replay sensors, a recording actuator, a degraded-link transport, and a simulated robot that turns velocity commands into a dead-reckoned pose. |
-| [`pamoja-power`](crates/pamoja-power/README.md) | energy | Duty cycling plus an energy-aware governor that stretches work as the battery drains and eases off while charging. |
-| [`pamoja-security`](crates/pamoja-security/README.md) | trust | ed25519 device identity: sign a device's telemetry and verify it, so a gateway can prove a reading is authentic. |
-| [`pamoja-audit`](crates/pamoja-audit/README.md) | trust | A `no_std` tamper-evident, SHA-256 hash-chained log; altering, reordering, or dropping any record breaks verification. |
-| [`pamoja-session`](crates/pamoja-session/README.md) | trust | A secured channel - X25519 key agreement, HKDF, and ChaCha20-Poly1305 with an anti-replay window - so two nodes get confidentiality and integrity over a hostile link without a TLS stack. |
-| [`pamoja-telemetry`](crates/pamoja-telemetry/README.md) | observe | Allocation-free observability that ships only what is worth the bytes as link cost rises, while counting everything. |
-| [`pamoja-lora`](crates/pamoja-lora/README.md) | radio | The exact LoRa time-on-air of a payload and the duty-cycle off-time it forces, so a node stays in regulation and budget. |
-| [`pamoja-lorawan`](crates/pamoja-lorawan/README.md) | radio | LoRaWAN 1.0.x MAC framing with AES-CMAC and AES encryption and OTAA join, against the FIPS-197 and RFC 4493 vectors. |
-| [`pamoja-mesh`](crates/pamoja-mesh/README.md) | mesh | Addressed, hop-limited, CRC-checked frames plus duplicate suppression that floods a packet across the mesh exactly once. |
-| [`pamoja-routing`](crates/pamoja-routing/README.md) | mesh | Reverse-path routing that learns the cheapest route from overheard traffic, saving the airtime flooding wastes. |
-| [`pamoja-modbus`](crates/pamoja-modbus/README.md) | field I/O | Modbus RTU framing (CRC-16/Modbus) with request builders and reply decoders for RS485 field sensors. |
-| [`pamoja-can`](crates/pamoja-can/README.md) | field I/O | CAN 2.0 and CAN-FD frames (11- and 29-bit IDs) plus J1939 decode and compose for trucks, tractors, and gensets. |
-| [`pamoja-serial`](crates/pamoja-serial/README.md) | field I/O | SLIP (RFC 1055) and COBS byte-stuffing with streaming frame decoders, so a raw UART byte stream carries discrete packets to motor controllers, GPS, and LiDAR. |
-| [`pamoja-gpio`](crates/pamoja-gpio/README.md) | field I/O | On-board bus logic: I2C 7- and 10-bit address frames (NXP UM10204) with reserved-range checks, the four SPI clock modes, and active-high/active-low GPIO pins. |
-| [`pamoja-sensors`](crates/pamoja-sensors/README.md) | field I/O | Datasheet-anchored, `no_std` decoders for common, cheap parts: BME280 (temp/humidity/pressure), DS18B20, INA219 power, and the ADS1115 ADC. |
-| [`pamoja-actuators`](crates/pamoja-actuators/README.md) | field I/O | `no_std` drivers for cheap outputs: PCA9685 16-channel PWM with servo-angle helpers, plus a stepper driver. |
-| [`pamoja-zenoh`](crates/pamoja-zenoh/README.md) | robotics | A Zenoh transport plus a key-expression engine (validity, canonical form, wildcard matching) so fleets and robots share data over Zenoh, with or without ROS 2. |
-| [`pamoja-ros2`](crates/pamoja-ros2/README.md) | robotics | A ROS 2 bridge - topics, services, and actions - with ROS 2 name, RIHS01 type-hash, and CDR handling plus rmw_zenoh key assembly, so a robot appears as an ordinary pamoja device; interoperates with rmw_zenoh, routerless. |
-| [`pamoja-kit`](crates/pamoja-kit/README.md) | ergonomics | Plain-language helpers that name the goal over the math: smoothing/filtering (EMA, median, Kalman, complementary, debounce), calibration, units and deadband shaping, PID and on/off control with ramping, trend/surge/depletion and anomaly prediction, rolling-window stats, wheel kinematics (differential, Ackermann, skid-steer, mecanum), odometry, waypoint guidance and motion safety (e-stop, watchdog, limits), two-link arm forward/inverse kinematics, and geo (distance/bearing/geofence), IMU tilt, and dew-point helpers. |
-| [`pamoja-profile`](crates/pamoja-profile/README.md) | ergonomics | Named, ready-to-run device profiles from plain data or a JSON manifest; assembled and testable with no hardware. |
-| [`pamoja-ffi`](crates/pamoja-ffi/README.md) | bindings | The curated C ABI over the core and MQTT, with a `cbindgen`-generated, drift-checked `pamoja.h`. |
+| [`pamoja-core`](crates/pamoja-core/README.md#pamoja-core) | core | The device model: `Transport`, `Device`, `Sensor`, `Actuator`, `Store`, event-bus, and error traits. |
+| [`pamoja-codec`](crates/pamoja-codec/README.md#pamoja-codec) | serialize | CBOR, JSON, and raw codecs behind one trait, plus delta+varint batch packing and an `f32` quantizer for metered links. |
+| [`pamoja-mqtt`](crates/pamoja-mqtt/README.md#pamoja-mqtt) | messaging | An MQTT client implementing the core `Transport` trait, tested against an embedded broker. |
+| [`pamoja-coap`](crates/pamoja-coap/README.md#pamoja-coap) | messaging | A CoAP client over UDP with confirmable and non-confirmable delivery and RFC 7641 observe. |
+| [`pamoja-ladder`](crates/pamoja-ladder/README.md#pamoja-ladder) | resilience | A cost-aware transport ladder: cheapest reachable rung first, buffering to a `Store` when every link is down. |
+| [`pamoja-sync`](crates/pamoja-sync/README.md#pamoja-sync) | resilience | Offline-first store-and-forward queues: in-memory, plus a crash-safe on-disk queue that survives power loss. |
+| [`pamoja-dashboard`](crates/pamoja-dashboard/README.md#pamoja-dashboard) | resilience | A local-first fleet dashboard a node serves over its own hotspot - multilingual and fully offline, with a hardware-free mock for development - so a community can see its own data with no cloud; profiles can declare custom sensors, node stats, and a theme the page renders with no code change. |
+| [`pamoja-bus`](crates/pamoja-bus/README.md#pamoja-bus) | core | An in-memory typed publish/subscribe event bus implementing the core `EventBus` trait. |
+| [`pamoja-loopback`](crates/pamoja-loopback/README.md#pamoja-loopback) | testing | An in-process `Transport` with topic matching and a fault injector, exercising the full path with no broker. |
+| [`pamoja-sim`](crates/pamoja-sim/README.md#pamoja-sim) | testing | Hardware-free simulators: noisy and replay sensors, a recording actuator, a degraded-link transport, and a simulated robot that turns velocity commands into a dead-reckoned pose. |
+| [`pamoja-power`](crates/pamoja-power/README.md#pamoja-power) | energy | Duty cycling plus an energy-aware governor that stretches work as the battery drains and eases off while charging. |
+| [`pamoja-security`](crates/pamoja-security/README.md#pamoja-security) | trust | ed25519 device identity: sign a device's telemetry and verify it, so a gateway can prove a reading is authentic. |
+| [`pamoja-audit`](crates/pamoja-audit/README.md#pamoja-audit) | trust | A `no_std` tamper-evident, SHA-256 hash-chained log; altering, reordering, or dropping any record breaks verification. |
+| [`pamoja-session`](crates/pamoja-session/README.md#pamoja-session) | trust | A secured channel - X25519 key agreement, HKDF, and ChaCha20-Poly1305 with an anti-replay window - so two nodes get confidentiality and integrity over a hostile link without a TLS stack. |
+| [`pamoja-telemetry`](crates/pamoja-telemetry/README.md#pamoja-telemetry) | observe | Allocation-free observability that ships only what is worth the bytes as link cost rises, while counting everything. |
+| [`pamoja-lora`](crates/pamoja-lora/README.md#pamoja-lora) | radio | The exact LoRa time-on-air of a payload and the duty-cycle off-time it forces, so a node stays in regulation and budget. |
+| [`pamoja-lorawan`](crates/pamoja-lorawan/README.md#pamoja-lorawan) | radio | LoRaWAN 1.0.x MAC framing with AES-CMAC and AES encryption and OTAA join, against the FIPS-197 and RFC 4493 vectors. |
+| [`pamoja-mesh`](crates/pamoja-mesh/README.md#pamoja-mesh) | mesh | Addressed, hop-limited, CRC-checked frames plus duplicate suppression that floods a packet across the mesh exactly once. |
+| [`pamoja-routing`](crates/pamoja-routing/README.md#pamoja-routing) | mesh | Reverse-path routing that learns the cheapest route from overheard traffic, saving the airtime flooding wastes. |
+| [`pamoja-modbus`](crates/pamoja-modbus/README.md#pamoja-modbus) | field I/O | Modbus RTU framing (CRC-16/Modbus) with request builders and reply decoders for RS485 field sensors. |
+| [`pamoja-can`](crates/pamoja-can/README.md#pamoja-can) | field I/O | CAN 2.0 and CAN-FD frames (11- and 29-bit IDs) plus J1939 decode and compose for trucks, tractors, and gensets. |
+| [`pamoja-serial`](crates/pamoja-serial/README.md#pamoja-serial) | field I/O | SLIP (RFC 1055) and COBS byte-stuffing with streaming frame decoders, so a raw UART byte stream carries discrete packets to motor controllers, GPS, and LiDAR. |
+| [`pamoja-gpio`](crates/pamoja-gpio/README.md#pamoja-gpio) | field I/O | On-board bus logic: I2C 7- and 10-bit address frames (NXP UM10204) with reserved-range checks, the four SPI clock modes, and active-high/active-low GPIO pins. |
+| [`pamoja-sensors`](crates/pamoja-sensors/README.md#pamoja-sensors) | field I/O | Datasheet-anchored, `no_std` decoders for common, cheap parts: BME280 (temp/humidity/pressure), DS18B20, INA219 power, and the ADS1115 ADC. |
+| [`pamoja-actuators`](crates/pamoja-actuators/README.md#pamoja-actuators) | field I/O | `no_std` drivers for cheap outputs: PCA9685 16-channel PWM with servo-angle helpers, plus a stepper driver. |
+| [`pamoja-zenoh`](crates/pamoja-zenoh/README.md#pamoja-zenoh) | robotics | A Zenoh transport plus a key-expression engine (validity, canonical form, wildcard matching) so fleets and robots share data over Zenoh, with or without ROS 2. |
+| [`pamoja-ros2`](crates/pamoja-ros2/README.md#pamoja-ros2) | robotics | A ROS 2 bridge - topics, services, and actions - with ROS 2 name, RIHS01 type-hash, and CDR handling plus rmw_zenoh key assembly, so a robot appears as an ordinary pamoja device; interoperates with rmw_zenoh, routerless. |
+| [`pamoja-kit`](crates/pamoja-kit/README.md#pamoja-kit) | ergonomics | Plain-language helpers that name the goal over the math: smoothing/filtering (EMA, median, Kalman, complementary, debounce), calibration, units and deadband shaping, PID and on/off control with ramping, trend/surge/depletion and anomaly prediction, rolling-window stats, wheel kinematics (differential, Ackermann, skid-steer, mecanum), odometry, waypoint guidance and motion safety (e-stop, watchdog, limits), two-link arm forward/inverse kinematics, and geo (distance/bearing/geofence), IMU tilt, and dew-point helpers. |
+| [`pamoja-profile`](crates/pamoja-profile/README.md#pamoja-profile) | ergonomics | Named, ready-to-run device profiles from plain data or a JSON manifest; assembled and testable with no hardware. |
+| [`pamoja-ffi`](crates/pamoja-ffi/README.md#pamoja-ffi) | bindings | The curated C ABI over the core and MQTT, with a `cbindgen`-generated, drift-checked `pamoja.h`. |
 
 ### Language bindings
 

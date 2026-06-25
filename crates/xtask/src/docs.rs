@@ -177,11 +177,14 @@ fn render_all() -> Result<Vec<(String, String)>, String> {
             format!("crates/{krate}/README.md"),
             crate_readme(krate, &overview, &items),
         ));
+        // Anchor the link to the crate README's title heading, so it opens at the top.
         match crate_description(krate) {
             Some(desc) => index.push_str(&format!(
-                "- [{krate}](../crates/{krate}/README.md) - {desc}\n"
+                "- [{krate}](../crates/{krate}/README.md#{krate}) - {desc}\n"
             )),
-            None => index.push_str(&format!("- [{krate}](../crates/{krate}/README.md)\n")),
+            None => index.push_str(&format!(
+                "- [{krate}](../crates/{krate}/README.md#{krate})\n"
+            )),
         }
     }
     readmes.push(("docs/README.md".to_owned(), index));
