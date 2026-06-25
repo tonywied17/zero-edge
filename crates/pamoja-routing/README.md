@@ -38,7 +38,7 @@ should go.
 
 **Examples**
 
-```
+```rust
 use pamoja_routing::{Forward, Router};
 
 let mut router: Router<16> = Router::new(0x01);

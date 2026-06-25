@@ -41,7 +41,7 @@ framing half ahead of it.
 
 **Examples**
 
-```
+```rust
 use pamoja_serial::{cobs, slip};
 
 let payload = b"gps:37.42,-122.08";

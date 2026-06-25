@@ -33,7 +33,7 @@ once the hardware-I/O layer lands:
 
 Drive a recording relay from a scripted probe, with no hardware:
 
-```
+```rust
 use pamoja_core::{Actuator, Sensor};
 use pamoja_sim::{RecordingActuator, Replay};
 

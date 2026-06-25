@@ -40,7 +40,7 @@ it.
 
 **Examples**
 
-```
+```rust
 use pamoja_mesh::{Frame, SeenCache};
 
 // A flood-warning sensor broadcasts a reading into the mesh.

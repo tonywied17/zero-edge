@@ -341,6 +341,26 @@ fn is_public(vis: &Visibility) -> bool {
     matches!(vis, Visibility::Public(_))
 }
 
+// Whether a rustdoc code-fence info string denotes a Rust block: empty (rustdoc's default) or
+// only Rust fence attributes. An explicit other language (`text`, `toml`, `sh`) is left alone.
+fn is_rust_fence(info: &str) -> bool {
+    info.is_empty()
+        || info.split(',').all(|token| {
+            matches!(
+                token.trim(),
+                "rust"
+                    | "no_run"
+                    | "ignore"
+                    | "should_panic"
+                    | "compile_fail"
+                    | "edition2015"
+                    | "edition2018"
+                    | "edition2021"
+                    | "edition2024"
+            )
+        })
+}
+
 // The rustdoc section headers that would otherwise render as top-level Markdown headings.
 const SECTIONS: &[&str] = &[
     "# Arguments",
@@ -376,8 +396,17 @@ fn doc_of(attrs: &[syn::Attribute]) -> String {
     for line in raw {
         let trimmed = line.trim_start();
         if trimmed.starts_with("```") {
+            let opening = !in_fence;
             in_fence = !in_fence;
-            out.push(line);
+            // rustdoc's bare (and `no_run`/`ignore`/...) fences are Rust, so tag the opening
+            // fence as `rust` for highlighting; keep an explicit other language (text, toml).
+            let info = trimmed.trim_start_matches('`').trim();
+            if opening && is_rust_fence(info) {
+                let indent = &line[..line.len() - trimmed.len()];
+                out.push(format!("{indent}```rust"));
+            } else {
+                out.push(line);
+            }
         } else if in_fence {
             if trimmed == "#" || trimmed.starts_with("# ") {
                 continue; // a hidden doctest line

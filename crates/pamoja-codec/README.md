@@ -27,7 +27,7 @@ For metered links it also packs batches of samples into far fewer bytes:
 
 A little-endian codec for `u32` values:
 
-```
+```rust
 use pamoja_codec::Codec;
 use pamoja_core::{Error, Result};
 

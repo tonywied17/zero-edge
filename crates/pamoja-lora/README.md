@@ -35,7 +35,7 @@ hardware-I/O layer.
 
 **Examples**
 
-```
+```rust
 use pamoja_lora::LinkSettings;
 
 let link = LinkSettings::new(12, 125_000); // SF12, 125 kHz: maximum range

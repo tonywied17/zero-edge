@@ -38,7 +38,7 @@ arrives with the hardware-I/O layer; this is the secured-packet half ahead of it
 
 **Examples**
 
-```
+```rust
 use pamoja_lorawan::{Session, Uplink};
 
 // A node activated with a device address and its two session keys.

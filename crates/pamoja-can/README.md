@@ -30,7 +30,7 @@ actually reasons about. Driving a real controller arrives with the hardware-I/O 
 
 **Examples**
 
-```
+```rust
 use pamoja_can::{CanId, Frame, J1939Id};
 
 // Build a classic frame for a motor controller.

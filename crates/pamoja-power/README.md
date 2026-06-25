@@ -28,7 +28,7 @@ The crate is `no_std` and allocation-free.
 
 **Examples**
 
-```
+```rust
 use core::time::Duration;
 use pamoja_power::{PowerMode, PowerPlan};
 

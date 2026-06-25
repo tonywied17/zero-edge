@@ -31,7 +31,7 @@ pattern intersection and inclusion arrive later, cross-checked against Zenoh's o
 
 **Examples**
 
-```
+```rust
 use pamoja_zenoh::keyexpr::{canonize, matches};
 
 // A subscription with a single-chunk wildcard selects a matching publication.

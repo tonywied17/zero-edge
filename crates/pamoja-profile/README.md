@@ -39,7 +39,7 @@ policy is unit-testable with no devices and no network.
 
 Assemble a cold-chain monitor's policy and evaluate a reading, no hardware needed:
 
-```
+```rust
 use pamoja_profile::{Alert, Profile};
 
 let profile = Profile::vaccine_fridge_monitor();

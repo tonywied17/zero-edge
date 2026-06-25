@@ -33,7 +33,7 @@ have returned, and [`send`](TransportLadder::send) for new data.
 
 **Examples**
 
-```
+```rust
 use pamoja_ladder::{Delivery, TransportLadder};
 use pamoja_loopback::{LoopbackBroker, LoopbackTransport};
 use pamoja_sync::MemoryStore;

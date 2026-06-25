@@ -33,7 +33,7 @@ The primary abstractions are:
 
 Implementing [`Sensor`] for a temperature probe:
 
-```
+```rust
 use pamoja_core::{Result, Sensor};
 
 struct Thermometer {

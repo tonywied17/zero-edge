@@ -40,7 +40,7 @@ a man in the middle.
 
 **Examples**
 
-```
+```rust
 use pamoja_session::{AgreementKey, Role, Session};
 
 // Each device holds its own seed and the other's authenticated public key.

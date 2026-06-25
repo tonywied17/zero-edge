@@ -37,7 +37,7 @@ hardware-I/O layer; this is the protocol half ahead of it.
 
 **Examples**
 
-```
+```rust
 use pamoja_modbus::{Adu, Pdu};
 
 // Ask unit 0x11 for three holding registers starting at 0x006B.

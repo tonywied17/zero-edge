@@ -30,7 +30,7 @@ subscribed, mirroring a live pub/sub channel.
 
 **Examples**
 
-```
+```rust
 use pamoja_core::EventBus;
 use pamoja_bus::BroadcastBus;
 

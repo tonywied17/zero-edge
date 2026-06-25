@@ -40,7 +40,7 @@ ahead of it.
 
 **Examples**
 
-```
+```rust
 use pamoja_gpio::i2c::{Address, Direction};
 use pamoja_gpio::pin::{Level, Polarity};
 use pamoja_gpio::spi::Mode;

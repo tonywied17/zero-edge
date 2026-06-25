@@ -35,7 +35,7 @@ bindings at build time), so it is built and tested in the ros:jazzy container.
 
 **Examples**
 
-```
+```rust
 use pamoja_ros2::msg::{Twist, Vector3};
 use pamoja_ros2::name::{dds_topic, EntityKind};
 

@@ -32,7 +32,7 @@ audited on a server.
 
 **Examples**
 
-```
+```rust
 use pamoja_audit::{verify_chain, AuditLog, Entry};
 use pamoja_security::DeviceIdentity;
 

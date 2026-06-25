@@ -22,7 +22,7 @@ default [`QualityOfService`] configured on the transport.
 
 **Examples**
 
-```no_run
+```rust
 use pamoja_core::Transport;
 use pamoja_mqtt::{MqttConfig, MqttTransport};
 

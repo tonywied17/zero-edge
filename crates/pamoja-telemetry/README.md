@@ -32,7 +32,7 @@ server.
 
 **Examples**
 
-```
+```rust
 use pamoja_telemetry::{Event, Level, LinkCost, Reporter};
 
 let mut reporter = Reporter::new(Level::Trace);

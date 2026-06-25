@@ -65,7 +65,7 @@ microcontroller and on a server.
 
 Compose two helpers to hold a noisy fridge probe near 4 C:
 
-```
+```rust
 use pamoja_kit::{Smoother, Thermostat};
 
 let mut probe = Smoother::new(0.5);

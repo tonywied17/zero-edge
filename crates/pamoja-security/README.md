@@ -30,7 +30,7 @@ TLS/DTLS and signed over-the-air updates.
 
 Sign a reading on the device, then verify it as an auditor would:
 
-```
+```rust
 use pamoja_security::DeviceIdentity;
 
 // A device is provisioned with a 32-byte secret seed.

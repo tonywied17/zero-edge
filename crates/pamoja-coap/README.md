@@ -28,7 +28,7 @@ which suits the cheapest, most power-constrained devices.
 
 **Examples**
 
-```no_run
+```rust
 use pamoja_core::Transport;
 use pamoja_coap::{CoapConfig, CoapTransport};
 
