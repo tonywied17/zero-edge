@@ -48,6 +48,13 @@ const EMBEDDED: &[Asset] = &[
         content_type: CSS,
         bytes: include_bytes!("../web/global.css"),
     },
+    // The floor page is also reachable from the full app (the top bar's "Lite" link), so a
+    // viewer on a weak phone can drop to it; it is excluded from the page-load footprint.
+    Asset {
+        path: "/lite.html",
+        content_type: HTML,
+        bytes: include_bytes!("../web/lite.html"),
+    },
     Asset {
         path: "/zquery.min.js",
         content_type: JS,
@@ -374,6 +381,17 @@ mod tests {
         assert_eq!(content_type, HTML);
         assert!(Assets::Embedded.get("/app/app.js").is_none());
         assert!(Assets::Embedded.get("/zquery.min.js").is_none());
+    }
+
+    #[cfg(not(feature = "tier-c"))]
+    #[test]
+    fn the_full_bundle_also_embeds_the_floor_page() {
+        // The full app links to the floor page (the top bar's "Lite" link), so it must be
+        // embedded beside the shell, not only in the tier-c image.
+        let (content_type, _) = Assets::Embedded
+            .get("/lite.html")
+            .expect("floor page embedded");
+        assert_eq!(content_type, HTML);
     }
 
     #[cfg(not(feature = "tier-c"))]

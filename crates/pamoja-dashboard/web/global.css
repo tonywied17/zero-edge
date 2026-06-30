@@ -170,6 +170,7 @@ h1, h2, h3 { margin: 0; font-family: var(--display); font-weight: 600; letter-sp
   min-block-size: 36px; padding: 0.42rem 0.72rem; border-radius: 999px; border: 0;
   background: transparent; color: var(--muted); font: inherit; font-size: 0.82rem;
   font-weight: 600; line-height: 1; cursor: pointer; white-space: nowrap;
+  text-decoration: none;
   transition: color 0.2s var(--ease), background 0.2s var(--ease);
 }
 .deck-seg:hover, .deck-seg:focus-visible { color: var(--text); background: color-mix(in srgb, var(--cyan) 12%, transparent); outline: none; }

@@ -187,7 +187,9 @@ page written for one tier reads another tier's data.
 
 The floor page renders the status table with the smallest possible script; when scripting is
 off entirely it falls back to `GET /lite`, a server-rendered, meta-refreshing table with no
-script at all. It is plain, but it is legible and it works on any browser.
+script at all. It is plain, but it is legible and it works on any browser. The full app links
+to it from the top bar's **Lite** control (and the floor links back), so a viewer on a weak
+phone can drop to it; the floor page is embedded in every tier for that reason.
 
 Build a non-default tier with `--no-default-features`. Tier B selects its locales with the
 `locale-*` features (English is always embedded as the fallback):
@@ -221,8 +223,9 @@ The page is a multi-file [zQuery](../../) app under [`web/`](web/): `index.html`
 `global.css`, the vendored `zquery.min.js`, and `app/` (entry, store, router, the live feed,
 i18n, the pairing/crypto helpers, the visualizations, and the components). In development
 `Assets::Dir` serves it from disk with hot reload; in production `Assets::Embedded` bakes it
-into the binary with `include_bytes!`. The Tier C floor is a separate single-file page,
-[`web/lite.html`](web/lite.html), with its styles and script inline.
+into the binary with `include_bytes!`. The floor is a separate single-file page,
+[`web/lite.html`](web/lite.html), with its styles and script inline; it is embedded in every
+tier and reachable from the top bar's Lite control.
 
 ## Commands
 

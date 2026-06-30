@@ -28,6 +28,7 @@ const ICON =
   scenario: SVG('<line x1="4" y1="8.5" x2="20" y2="8.5"/><line x1="4" y1="15.5" x2="20" y2="15.5"/><circle cx="9" cy="8.5" r="2.4" fill="var(--bg-1)"/><circle cx="15" cy="15.5" r="2.4" fill="var(--bg-1)"/>'),
   lock: SVG('<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>'),
   unlock: SVG('<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.6-1.5"/>'),
+  lite: SVG('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9.5h18M3 14.5h18"/>'),
 };
 const CHEVRON = '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
 
@@ -123,6 +124,9 @@ $.component('top-bar', {
           <button class="deck-seg theme ${night ? 'is-night' : 'is-day'}" type="button" @click="toggleTheme" aria-label="${esc(t('ui.theme'))}" title="${night ? esc(t('ui.day')) : esc(t('ui.night'))}">
             ${night ? ICON.sun : ICON.moon}
           </button>
+          <a class="deck-seg lite" href="lite.html" aria-label="${esc(t('ui.tierLite'))}" title="${esc(t('ui.tierLite'))}">
+            ${ICON.lite}<span class="deck-label">${t('ui.tierLite')}</span>
+          </a>
           ${demo.value ? `
           <span class="deck-div" aria-hidden="true"></span>
           <div class="deck-dd ${s.scenarioOpen ? 'open' : ''}" @click.outside="closeScenario">
