@@ -309,8 +309,9 @@ fn ros(args: &[String]) -> ExitCode {
 /// the gzipped transfer budget, anything else runs the mock-backed dev server.
 ///
 /// `cargo xtask dashboard i18n` checks the per-locale JSON bundles (key, placeholder, and
-/// metadata parity). `cargo xtask dashboard footprint` sums the gzipped page-load bundle
-/// and enforces its budget. `cargo xtask dashboard dev alarm` serves the alarm scenario; a
+/// metadata parity). `cargo xtask dashboard footprint` sums the gzipped page-load bundle and
+/// enforces each tier's budget (add `--tier <a|b|c>` for one tier). `cargo xtask dashboard
+/// dev alarm` serves the alarm scenario; a
 /// leading `dev` word is optional and dropped, and any other arguments (a scenario key,
 /// `--addr`, `--embedded`, `--interval-ms`) pass straight through to the dev binary.
 fn dashboard(args: &[String]) -> ExitCode {

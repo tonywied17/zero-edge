@@ -19,10 +19,24 @@ struct Asset {
 const HTML: &str = "text/html; charset=utf-8";
 const CSS: &str = "text/css; charset=utf-8";
 const JS: &str = "application/javascript; charset=utf-8";
+// Only the full bundle embeds the per-locale JSON; the floor tier carries none.
+#[cfg(not(feature = "tier-c"))]
 const JSON: &str = "application/json; charset=utf-8";
 
-// The bundle, embedded at compile time. `/` maps to the page shell. The order does not
+// The smallest tier embeds only the self-contained floor page at `/`: one ultra-minimal,
+// gzippable document that renders the status table with the smallest possible script, and
+// degrades to the device's server-rendered `/lite` table when scripting is off. The rich app
+// modules are not part of this image.
+#[cfg(feature = "tier-c")]
+const EMBEDDED: &[Asset] = &[Asset {
+    path: "/",
+    content_type: HTML,
+    bytes: include_bytes!("../web/lite.html"),
+}];
+
+// The full bundle, embedded at compile time. `/` maps to the page shell. The order does not
 // matter; lookups are by exact path.
+#[cfg(not(feature = "tier-c"))]
 const EMBEDDED: &[Asset] = &[
     Asset {
         path: "/",
@@ -301,6 +315,7 @@ mod tests {
         assert!(!bytes.is_empty());
     }
 
+    #[cfg(not(feature = "tier-c"))]
     #[test]
     fn embedded_serves_the_app_entry_and_framework() {
         assert!(Assets::Embedded.get("/zquery.min.js").is_some());
@@ -308,6 +323,18 @@ mod tests {
         assert!(Assets::Embedded.get("/global.css").is_some());
     }
 
+    #[cfg(feature = "tier-c")]
+    #[test]
+    fn tier_c_embeds_only_the_floor_page() {
+        // The floor image is the single self-contained page and nothing else: the rich app
+        // modules must not be baked in, so the firmware stays tiny.
+        let (content_type, _) = Assets::Embedded.get("/").expect("floor page present");
+        assert_eq!(content_type, HTML);
+        assert!(Assets::Embedded.get("/app/app.js").is_none());
+        assert!(Assets::Embedded.get("/zquery.min.js").is_none());
+    }
+
+    #[cfg(not(feature = "tier-c"))]
     #[test]
     fn embedded_serves_the_lib_modules() {
         // The feature and helper modules live under app/lib (with the visualizations split
@@ -317,6 +344,7 @@ mod tests {
         assert!(Assets::Embedded.get("/app/lib/viz/index.js").is_some());
     }
 
+    #[cfg(not(feature = "tier-c"))]
     #[test]
     fn embedded_serves_the_pairing_and_crypto_modules() {
         // app.js imports these unconditionally (pairing/control and its pure-JS crypto); a
@@ -333,6 +361,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "tier-c"))]
     #[test]
     fn every_viz_kind_is_known_to_the_page_renderer() {
         // The Rust `Viz` vocabulary and the page's renderer are one contract across languages:
@@ -353,6 +382,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "tier-c"))]
     #[test]
     fn embedded_has_all_six_seed_locales() {
         for locale in ["en", "sw", "ar", "fr", "pt", "hi"] {

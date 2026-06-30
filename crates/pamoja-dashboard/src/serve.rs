@@ -331,6 +331,21 @@ fn handle<S: StateSource, C: Read + Write>(
                 b"",
             ),
         },
+        ("GET", "/lite") => {
+            // The no-JavaScript floor: a status table built once on the device, refreshed by
+            // a meta tag. The embedded floor page bounces here when scripting is off.
+            let html = match source.lock() {
+                Ok(mut source) => crate::lite::render_lite(&source.snapshot()),
+                Err(_) => crate::lite::render_unavailable(),
+            };
+            write_response(
+                &mut conn,
+                200,
+                "OK",
+                "text/html; charset=utf-8",
+                html.as_bytes(),
+            )
+        }
         ("GET", "/events") => stream_events(&mut conn, &source, interval),
         ("GET", "/pair/challenge") => {
             let challenge = auth.challenge();
@@ -672,6 +687,15 @@ mod tests {
     }
 
     #[test]
+    fn a_get_lite_serves_a_no_script_status_table() {
+        let written = handle_request(b"GET /lite HTTP/1.1\r\n\r\n", Arc::new(Auth::new("s")));
+        assert!(written.contains("200 OK"));
+        assert!(written.contains("text/html"));
+        assert!(written.contains("http-equiv=\"refresh\""));
+        assert!(!written.contains("<script"));
+    }
+
+    #[test]
     fn a_challenge_then_confirm_pairs_over_http() {
         use pamoja_session::{hkdf_sha256, hmac_sha256};
 
@@ -719,8 +743,8 @@ mod tests {
         use flate2::read::GzDecoder;
         use std::io::Read as _;
 
-        let mut conn =
-            MemConn::new(b"GET /app/app.js HTTP/1.1\r\nAccept-Encoding: gzip, deflate\r\n\r\n");
+        // The page shell at `/` is present in every tier, so this stays tier-agnostic.
+        let mut conn = MemConn::new(b"GET / HTTP/1.1\r\nAccept-Encoding: gzip, deflate\r\n\r\n");
         handle(
             &mut conn,
             Arc::new(Mutex::new(Mock::new(Scenario::Normal))),
@@ -744,16 +768,13 @@ mod tests {
         GzDecoder::new(&conn.output[split..])
             .read_to_end(&mut decoded)
             .expect("gunzip");
-        let (_, original) = Assets::Embedded.get("/app/app.js").expect("asset");
+        let (_, original) = Assets::Embedded.get("/").expect("asset");
         assert_eq!(decoded, original, "gunzipped body matches the source asset");
     }
 
     #[test]
     fn an_asset_is_identity_without_accept_encoding() {
-        let written = handle_request(
-            b"GET /app/app.js HTTP/1.1\r\n\r\n",
-            Arc::new(Auth::new("s")),
-        );
+        let written = handle_request(b"GET / HTTP/1.1\r\n\r\n", Arc::new(Auth::new("s")));
         assert!(written.contains("200 OK"));
         assert!(!written.contains("Content-Encoding"));
     }

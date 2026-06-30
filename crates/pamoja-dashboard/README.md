@@ -167,8 +167,32 @@ step and nothing to keep in sync by hand. `cargo xtask dashboard i18n` validates
 ## Performance
 
 The device serves its assets gzip-encoded, and `cargo xtask dashboard footprint` enforces a
-gzipped page-load budget so the bundle stays small over a weak link (currently well under
-150 KB including one locale). First paint needs no round trip after the initial load.
+gzipped page-load budget per tier (the full tiers well under 150 KB including one locale; the
+Tier C floor page a few KB against a 50 KB ceiling), so the bundle stays small over a weak
+link. Add `--tier <a|b|c>` to check one tier. First paint needs no round trip after the
+initial load.
+
+## Capability tiers
+
+One design serves hardware from a city gateway down to a microcontroller, chosen with a
+compile-time tier feature. The `GET /state` contract is identical across all of them, so a
+page written for one tier reads another tier's data.
+
+| Tier | Feature | What ships | Budget |
+| --- | --- | --- | --- |
+| A / B | `tier-a` (default), `tier-b` | the full localized app: hand-built visuals, six locales, history, authenticated control | ~150 KB gzipped, including one locale |
+| C | `tier-c` | a single self-contained **floor page** for the smallest hardware | ~50 KB gzipped |
+
+The floor page renders the status table with the smallest possible script; when scripting is
+off entirely it falls back to `GET /lite`, a server-rendered, meta-refreshing table with no
+script at all. It is plain, but it is legible and it works on any browser. Build a non-default
+tier with `--no-default-features`:
+
+```
+cargo build -p pamoja-dashboard --no-default-features --features "serve,tier-c"
+```
+
+Tier B shares Tier A's full bundle today; its flash-fit locale subset is a later refinement.
 
 ## Build modes: real vs demo
 
@@ -188,14 +212,15 @@ The page is a multi-file [zQuery](../../) app under [`web/`](web/): `index.html`
 `global.css`, the vendored `zquery.min.js`, and `app/` (entry, store, router, the live feed,
 i18n, the pairing/crypto helpers, the visualizations, and the components). In development
 `Assets::Dir` serves it from disk with hot reload; in production `Assets::Embedded` bakes it
-into the binary with `include_bytes!`.
+into the binary with `include_bytes!`. The Tier C floor is a separate single-file page,
+[`web/lite.html`](web/lite.html), with its styles and script inline.
 
 ## Commands
 
 - `cargo xtask dashboard dev [scenario]` - run the mock-backed dev server (hot reload).
 - `cargo run -p pamoja-dashboard --example gateway` - run the real-`Fleet` reference gateway.
 - `cargo xtask dashboard i18n --check` - validate the locale bundles.
-- `cargo xtask dashboard footprint` - check the gzipped page-load budget.
+- `cargo xtask dashboard footprint [--tier a|b|c]` - check each tier's gzipped page-load budget.
 - `cargo xtask docs` - regenerate the crate READMEs and the workspace API index under `docs/`.
 
 ## API reference

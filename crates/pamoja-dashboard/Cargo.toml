@@ -16,9 +16,20 @@ publish = false
 # authenticator (keyed-hash primitives + a system RNG) and asset compression. The `mock`
 # feature is the hardware-free demo fleet: on by default for development and the showcase,
 # off in a real firmware build that ships only its own real source.
-default = ["serve", "mock"]
+default = ["serve", "mock", "tier-a"]
 serve = ["dep:pamoja-session", "dep:getrandom", "dep:flate2"]
 mock = []
+
+# Capability tier, chosen at compile time. The full localized app is embedded unless `tier-c`
+# is selected, so the documented real build (`--no-default-features --features serve`) keeps
+# the full page. `tier-a` and `tier-b` both embed the full bundle today (Tier B's flash-fit
+# locale subset is a later refinement); `tier-c` embeds only the minimal floor page for the
+# smallest hardware. Build a non-default tier with `--no-default-features`, for example
+# `--no-default-features --features "serve,tier-c"`. The per-tier transfer budgets are
+# enforced by `cargo xtask dashboard footprint`.
+tier-a = []
+tier-b = []
+tier-c = []
 
 [dependencies]
 # Only the data types are read from these crates to build the snapshot; the
